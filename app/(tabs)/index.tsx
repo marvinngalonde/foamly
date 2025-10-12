@@ -35,7 +35,7 @@ export default function HomeScreen() {
         name: service.name,
         price: parseFloat(service.price),
         rating: service.provider ? parseFloat(service.provider.rating) : 0,
-        imageUrl: (service as any).imageUrl,
+        imageUrl: service.imageUrl,
       }));
   }, [services]);
 
@@ -68,10 +68,10 @@ export default function HomeScreen() {
         id: provider.id,
         name: provider.businessName,
         rating: parseFloat(provider.rating),
-        distance: '2.5 km', // TODO: Calculate actual distance
-        specialty: (provider as any).serviceArea,
+        specialty: provider.serviceArea,
         reviews: parseInt(provider.totalReviews),
-        profilePicture: (provider as any).profilePicture,
+        profilePicture: provider.user?.profilePicture,
+        address: provider.address,
       }));
   }, [providers]);
 
@@ -213,12 +213,14 @@ export default function HomeScreen() {
                 <View style={styles.providerRating}>
                   <MaterialCommunityIcons name="star" size={14} color="#FFA500" />
                   <Text style={styles.providerRatingText}>{provider.rating.toFixed(1)}</Text>
-                  <Text style={styles.providerReviews}>({provider.reviews})</Text>
+                  <Text style={styles.providerReviews}>({provider.reviews} reviews)</Text>
                 </View>
-                <View style={styles.providerDistance}>
-                  <MaterialCommunityIcons name="map-marker" size={14} color="#666" />
-                  <Text style={styles.providerDistanceText}>{provider.distance}</Text>
-                </View>
+                {provider.address && (
+                  <View style={styles.providerDistance}>
+                    <MaterialCommunityIcons name="map-marker" size={14} color="#666" />
+                    <Text style={styles.providerDistanceText} numberOfLines={1}>{provider.address}</Text>
+                  </View>
+                )}
               </View>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={24} color="#CCC" />

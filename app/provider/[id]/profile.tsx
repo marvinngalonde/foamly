@@ -4,13 +4,35 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useProvider } from '@/hooks/useProviders';
 import { useProviderServices } from '@/hooks/useServices';
+import { useState, useEffect } from 'react';
+import * as Location from 'expo-location';
 
 export default function ProviderProfileScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const [providerLocation, setProviderLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const { data: provider, isLoading: providerLoading } = useProvider(id || '');
   const { data: services = [], isLoading: servicesLoading } = useProviderServices(id || '');
+
+  // Geocode provider address to get coordinates
+  useEffect(() => {
+    (async () => {
+      if (provider?.address) {
+        try {
+          const geocoded = await Location.geocodeAsync(provider.address);
+          if (geocoded.length > 0) {
+            setProviderLocation({
+              latitude: geocoded[0].latitude,
+              longitude: geocoded[0].longitude,
+            });
+          }
+        } catch (error) {
+          console.error('Error geocoding address:', error);
+        }
+      }
+    })();
+  }, [provider?.address]);
 
   if (providerLoading) {
     return (
@@ -47,9 +69,9 @@ export default function ProviderProfileScreen() {
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
-              {(provider as any).profilePicture ? (
+              {provider.user?.profilePicture ? (
                 <Image
-                  source={{ uri: (provider as any).profilePicture }}
+                  source={{ uri: provider.user.profilePicture }}
                   style={styles.avatar}
                 />
               ) : (
@@ -66,7 +88,7 @@ export default function ProviderProfileScreen() {
 
             <View style={styles.providerInfo}>
               <Text style={styles.businessName}>{provider.businessName}</Text>
-              <Text style={styles.serviceArea}>{(provider as any).serviceArea}</Text>
+              <Text style={styles.serviceArea}>{provider.serviceArea}</Text>
 
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
@@ -81,10 +103,31 @@ export default function ProviderProfileScreen() {
             </View>
           </View>
 
-          {(provider as any).bio && (
+          {provider.bio && (
             <View style={styles.bioSection}>
               <Text style={styles.sectionTitle}>About</Text>
-              <Text style={styles.bioText}>{(provider as any).bio}</Text>
+              <Text style={styles.bioText}>{provider.bio}</Text>
+            </View>
+          )}
+
+          {provider.address && (
+            <View style={styles.bioSection}>
+              <Text style={styles.sectionTitle}>Location</Text>
+              <View style={styles.contactRow}>
+                <MaterialCommunityIcons name="map-marker" size={20} color="#666" />
+                <Text style={styles.bioText}>{provider.address}</Text>
+              </View>
+              {providerLocation && (
+                <View style={styles.mapSection}>
+                  <View style={styles.miniMapPlaceholder}>
+                    <MaterialCommunityIcons name="map-marker" size={48} color="#3B82F6" />
+                    <Text style={styles.coordinatesText}>
+                      {providerLocation.latitude.toFixed(4)}, {providerLocation.longitude.toFixed(4)}
+                    </Text>
+                    <Text style={styles.mapHint}>Location coordinates</Text>
+                  </View>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -102,6 +145,12 @@ export default function ProviderProfileScreen() {
           ) : (
             services.map((service) => (
               <Card key={service.id} style={styles.serviceCard}>
+                {service.imageUrl && (
+                  <Image
+                    source={{ uri: service.imageUrl }}
+                    style={styles.serviceCardImage}
+                  />
+                )}
                 <Card.Content>
                   <View style={styles.serviceHeader}>
                     <View style={styles.serviceInfo}>
@@ -123,6 +172,20 @@ export default function ProviderProfileScreen() {
             ))
           )}
         </View>
+
+        {/* Gallery Section */}
+        {provider.gallery && provider.gallery.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Gallery</Text>
+            <View style={styles.galleryGrid}>
+              {provider.gallery.map((imageUrl, index) => (
+                <View key={index} style={styles.galleryImageContainer}>
+                  <Image source={{ uri: imageUrl }} style={styles.galleryImage} />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Contact Section */}
         <View style={styles.section}>
@@ -265,6 +328,45 @@ const styles = StyleSheet.create({
     borderTopColor: '#E5E7EB',
     paddingTop: 16,
   },
+  mapSection: {
+    marginTop: 12,
+    height: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  miniMapPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#E0F2FE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  coordinatesText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 12,
+    fontFamily: 'NunitoSans_700Bold',
+  },
+  mapHint: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    fontFamily: 'NunitoSans_400Regular',
+  },
+  markerContainer: {
+    backgroundColor: '#FFF',
+    padding: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -285,6 +387,12 @@ const styles = StyleSheet.create({
   serviceCard: {
     marginBottom: 12,
     elevation: 1,
+    overflow: 'hidden',
+  },
+  serviceCardImage: {
+    width: '100%',
+    height: 150,
+    resizeMode: 'cover',
   },
   serviceHeader: {
     flexDirection: 'row',
@@ -356,6 +464,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     fontFamily: 'NunitoSans_400Regular',
+  },
+  galleryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  galleryImageContainer: {
+    width: '48%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#F3F4F6',
+  },
+  galleryImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   bottomPadding: {
     height: 20,

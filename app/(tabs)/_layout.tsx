@@ -60,6 +60,16 @@ export default function TabLayout() {
           href: isProvider ? undefined : null,
         }}
       />
+       <Tabs.Screen
+        name="provider-profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="account" size={size} color={color} />
+          ),
+          href: isProvider ? undefined : null,
+        }}
+      />
       <Tabs.Screen
         name="services"
         options={{
@@ -77,6 +87,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="account" size={size} color={color} />
           ),
+          href: isProvider ? null : undefined,
         }}
       />
     </Tabs>

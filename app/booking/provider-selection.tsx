@@ -1,18 +1,36 @@
-import { View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useProviders } from '@/hooks/useProviders';
 import { useBookingStore } from '@/stores/bookingStore';
+import * as Location from 'expo-location';
 
 export default function ProviderSelectionScreen() {
   const router = useRouter();
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('best-match');
   const { setSelectedProvider } = useBookingStore();
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const { data: providers = [], isLoading } = useProviders();
+
+  // Get user's current location
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({});
+      setUserLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+    })();
+  }, []);
 
   const handleSelectProvider = (provider: any) => {
     setSelectedProvider(provider);
@@ -54,24 +72,54 @@ export default function ProviderSelectionScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Map Container */}
+      {/* Map Container - Static Map Placeholder */}
       <View style={styles.mapContainer}>
         <View style={styles.mapPlaceholder}>
-          <MaterialCommunityIcons name="map-marker-multiple" size={64} color="#3B82F6" />
+          <MaterialCommunityIcons name="map" size={80} color="#3B82F6" />
           <Text style={styles.mapText}>Provider Locations</Text>
           <Text style={styles.mapSubtext}>{providers.length} providers in your area</Text>
+          {userLocation && (
+            <Text style={styles.locationText}>
+              Lat: {userLocation.latitude.toFixed(4)}, Lng: {userLocation.longitude.toFixed(4)}
+            </Text>
+          )}
         </View>
 
-        {/* Provider markers overlay */}
+        {/* Provider indicators */}
         <View style={styles.providersOverlay}>
-          {providers.slice(0, 3).map((provider, index) => (
-            <View key={provider.id} style={[styles.providerPin, { left: 20 + (index * 80), top: 40 + (index * 30) }]}>
-              <MaterialCommunityIcons name="store" size={20} color="#FFF" />
+          {providers.slice(0, 5).map((provider, index) => (
+            <View
+              key={provider.id}
+              style={[
+                styles.providerIndicator,
+                { left: 30 + (index * 60) % 250, top: 60 + (index * 40) % 150 }
+              ]}
+            >
+              <MaterialCommunityIcons name="store" size={16} color="#FFF" />
             </View>
           ))}
         </View>
 
-        <TouchableOpacity style={styles.locationButton}>
+        <View style={styles.mapOverlay}>
+          <View style={styles.mapInfoBadge}>
+            <MaterialCommunityIcons name="map-marker-multiple" size={16} color="#3B82F6" />
+            <Text style={styles.mapInfoText}>{providers.length} providers nearby</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.locationButton}
+          onPress={async () => {
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status === 'granted') {
+              let location = await Location.getCurrentPositionAsync({});
+              setUserLocation({
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+              });
+            }
+          }}
+        >
           <MaterialCommunityIcons name="crosshairs-gps" size={24} color="#3B82F6" />
         </TouchableOpacity>
       </View>
@@ -126,9 +174,18 @@ export default function ProviderSelectionScreen() {
               onPress={() => handleSelectProvider(provider)}
             >
               {/* Provider Photo */}
-              <View style={styles.providerPhoto}>
-                <MaterialCommunityIcons name="account-circle" size={56} color="#3B82F6" />
-                {provider.certifiedAt && (
+              <View style={styles.providerPhotoContainer}>
+                {provider.user?.profilePicture ? (
+                  <Image
+                    source={{ uri: provider.user.profilePicture }}
+                    style={styles.providerPhoto}
+                  />
+                ) : (
+                  <View style={styles.providerPhotoPlaceholder}>
+                    <MaterialCommunityIcons name="account" size={32} color="#3B82F6" />
+                  </View>
+                )}
+                {provider.verified && (
                   <View style={styles.verifiedBadge}>
                     <MaterialCommunityIcons name="check-decagram" size={16} color="#10B981" />
                   </View>
@@ -240,6 +297,51 @@ const styles = StyleSheet.create({
   },
   map: {
     ...StyleSheet.absoluteFillObject,
+  },
+  mapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E0F2FE',
+  },
+  mapText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 12,
+    fontFamily: 'NunitoSans_700Bold',
+  },
+  mapSubtext: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 4,
+    fontFamily: 'NunitoSans_400Regular',
+  },
+  locationText: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 8,
+    fontFamily: 'NunitoSans_400Regular',
+  },
+  providersOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    pointerEvents: 'none',
+  },
+  providerIndicator: {
+    position: 'absolute',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   markerContainer: {
     backgroundColor: '#FFF',
@@ -359,12 +461,24 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'flex-start',
   },
+  providerPhotoContainer: {
+    width: 56,
+    height: 56,
+    marginRight: 12,
+    position: 'relative',
+  },
   providerPhoto: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    marginRight: 12,
-    position: 'relative',
+  },
+  providerPhotoPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#E0F2FE',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   verifiedBadge: {
     position: 'absolute',

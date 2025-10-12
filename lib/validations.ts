@@ -48,6 +48,7 @@ export const serviceSchema = z.object({
   price: z.number().positive('Price must be positive'),
   duration: z.string().min(1, 'Duration is required'),
   isActive: z.boolean().optional(),
+  imageUrl: z.string().optional(),
 });
 
 // Booking validation schemas
@@ -89,7 +90,9 @@ export const updateProviderProfileSchema = z.object({
   businessName: z.string().min(2).optional(),
   bio: z.string().optional(),
   serviceArea: z.string().min(2).optional(),
+  address: z.string().optional(),
   profilePicture: z.string().optional(),
+  gallery: z.array(z.string()).optional(),
 });
 
 // Type exports

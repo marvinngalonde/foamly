@@ -4,14 +4,13 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
-import { useProviderByUserId, useUpdateProvider } from '@/hooks/useProviders';
+import { useProviderByUserId } from '@/hooks/useProviders';
 
 export default function ProviderSettingsScreen() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
 
   const { data: provider } = useProviderByUserId(user?.id || '');
-  const updateProviderMutation = useUpdateProvider();
 
   // Notification settings
   const [newBookingNotifications, setNewBookingNotifications] = useState(true);
@@ -227,7 +226,7 @@ export default function ProviderSettingsScreen() {
             <View style={styles.actionInfo}>
               <Text style={styles.actionLabel}>Edit Service Area</Text>
               <Text style={styles.actionDescription}>
-                {(provider as any)?.serviceArea || 'Update your service area'}
+                {provider?.serviceArea || 'Update your service area'}
               </Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={24} color="#CCC" />

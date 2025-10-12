@@ -2,10 +2,11 @@ import { View, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Image, A
 import { Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useUpdateProfilePicture } from '@/hooks/useUsers';
 import { pickImage, uploadProfilePicture } from '@/lib/storage';
+import { UserRole } from '@/types';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -16,6 +17,13 @@ export default function ProfileScreen() {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const updateProfilePictureMutation = useUpdateProfilePicture();
+
+  // Redirect providers to their provider-specific profile page
+  useEffect(() => {
+    if (user?.role === UserRole.PROVIDER) {
+      router.replace('/provider/profile');
+    }
+  }, [user?.role, router]);
 
   const handleUploadPhoto = async () => {
     try {

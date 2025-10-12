@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/authStore';
 import { useProviderByUserId } from '@/hooks/useProviders';
 import { useCreateService } from '@/hooks/useServices';
+import { pickImage, uploadImage } from '@/lib/storage';
 
 export default function AddServiceScreen() {
   const router = useRouter();
@@ -23,6 +24,8 @@ export default function AddServiceScreen() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [imageUrl, setImageUrl] = useState<string>('');
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const serviceTypes = [
     { value: 'basic_wash', label: 'Basic Wash', icon: 'water', color: '#3B82F6' },
@@ -34,6 +37,29 @@ export default function AddServiceScreen() {
     { value: 'ceramic_coating', label: 'Ceramic Coating', icon: 'shield-check', color: '#F59E0B' },
   ];
 
+  const handleUploadImage = async () => {
+    try {
+      setUploadingImage(true);
+
+      const image = await pickImage();
+      if (!image) {
+        setUploadingImage(false);
+        return;
+      }
+
+      // Upload to Supabase
+      const result = await uploadImage(image.uri, 'services', `service_${provider?.id}_${Date.now()}.jpg`);
+      setImageUrl(result.url);
+
+      Alert.alert('Success', 'Service image uploaded!');
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      Alert.alert('Error', error.message || 'Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
@@ -41,6 +67,7 @@ export default function AddServiceScreen() {
     if (!formData.description.trim()) newErrors.description = 'Description is required';
     if (!formData.price || parseFloat(formData.price) <= 0) newErrors.price = 'Valid price is required';
     if (!formData.duration.trim()) newErrors.duration = 'Duration is required';
+    if (!imageUrl.trim()) newErrors.image = 'Service image is required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -60,6 +87,7 @@ export default function AddServiceScreen() {
         price: parseFloat(formData.price),
         duration: formData.duration,
         isActive: formData.isActive,
+        imageUrl: imageUrl,
       },
       {
         onSuccess: () => {
@@ -86,6 +114,35 @@ export default function AddServiceScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Service Image */}
+        <View style={styles.field}>
+          <Text style={styles.label}>Service Image *</Text>
+          <TouchableOpacity
+            style={[styles.imageUploadContainer, errors.image && styles.imageUploadError]}
+            onPress={handleUploadImage}
+            disabled={uploadingImage}
+          >
+            {uploadingImage ? (
+              <ActivityIndicator size="large" color="#3B82F6" />
+            ) : imageUrl ? (
+              <>
+                <Image source={{ uri: imageUrl }} style={styles.uploadedImage} />
+                <View style={styles.changeImageOverlay}>
+                  <MaterialCommunityIcons name="camera" size={32} color="#FFF" />
+                  <Text style={styles.changeImageText}>Change Image</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <MaterialCommunityIcons name="image-plus" size={48} color="#9CA3AF" />
+                <Text style={styles.uploadPlaceholderText}>Tap to upload service image</Text>
+                <Text style={styles.uploadHintText}>Recommended: 800x600px</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          {errors.image && <Text style={styles.errorText}>{errors.image}</Text>}
+        </View>
+
         {/* Service Name */}
         <View style={styles.field}>
           <Text style={styles.label}>Service Name *</Text>
@@ -394,6 +451,54 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFF',
     fontFamily: 'NunitoSans_700Bold',
+  },
+  imageUploadContainer: {
+    height: 200,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    borderStyle: 'dashed',
+    overflow: 'hidden',
+  },
+  imageUploadError: {
+    borderColor: '#DC2626',
+  },
+  uploadedImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  changeImageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  changeImageText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  uploadPlaceholderText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 12,
+    fontFamily: 'NunitoSans_400Regular',
+  },
+  uploadHintText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 4,
+    fontFamily: 'NunitoSans_400Regular',
   },
   bottomPadding: {
     height: 40,

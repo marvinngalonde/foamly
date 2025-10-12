@@ -13,6 +13,7 @@ export interface Service {
   price: string;
   duration: string;
   isActive: boolean;
+  imageUrl?: string;
   createdAt: Date;
   updatedAt: Date;
   provider?: {
@@ -48,6 +49,7 @@ export async function getServices(): Promise<Service[]> {
     price: service.price,
     duration: service.duration,
     isActive: service.is_active,
+    imageUrl: service.image_url,
     createdAt: new Date(service.created_at),
     updatedAt: new Date(service.updated_at),
     provider: service.provider_profiles ? {
@@ -84,6 +86,7 @@ export async function getServiceById(id: string): Promise<Service> {
     price: data.price,
     duration: data.duration,
     isActive: data.is_active,
+    imageUrl: data.image_url,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
     provider: data.provider_profiles ? {
@@ -113,6 +116,7 @@ export async function getServicesByProvider(providerId: string): Promise<Service
     price: service.price,
     duration: service.duration,
     isActive: service.is_active,
+    imageUrl: service.image_url,
     createdAt: new Date(service.created_at),
     updatedAt: new Date(service.updated_at),
   }));
@@ -132,6 +136,7 @@ export async function createService(providerId: string, input: ServiceInput): Pr
       price: validated.price.toString(),
       duration: validated.duration,
       is_active: validated.isActive ?? true,
+      image_url: validated.imageUrl,
     })
     .select()
     .single();
@@ -147,6 +152,7 @@ export async function createService(providerId: string, input: ServiceInput): Pr
     price: data.price,
     duration: data.duration,
     isActive: data.is_active,
+    imageUrl: data.image_url,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
   };
@@ -162,6 +168,7 @@ export async function updateService(id: string, input: Partial<ServiceInput>): P
   if (input.price) updateData.price = input.price.toString();
   if (input.duration) updateData.duration = input.duration;
   if (input.isActive !== undefined) updateData.is_active = input.isActive;
+  if (input.imageUrl !== undefined) updateData.image_url = input.imageUrl;
 
   updateData.updated_at = new Date().toISOString();
 
@@ -183,6 +190,7 @@ export async function updateService(id: string, input: Partial<ServiceInput>): P
     price: data.price,
     duration: data.duration,
     isActive: data.is_active,
+    imageUrl: data.image_url,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
   };

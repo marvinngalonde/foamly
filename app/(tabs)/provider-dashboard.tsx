@@ -182,7 +182,7 @@ export default function ProviderDashboardScreen() {
       {/* Fixed Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.push('/provider/profile')}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/provider-profile')}>
             <Text style={styles.businessName}>{provider.businessName}</Text>
             <Text style={styles.headerSubtitle}>Tap to view profile</Text>
           </TouchableOpacity>

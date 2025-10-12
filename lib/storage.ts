@@ -43,12 +43,12 @@ export async function pickImage(): Promise<ImagePicker.ImagePickerAsset | null> 
 /**
  * Upload an image to Supabase storage
  * @param fileUri - Local file URI from ImagePicker
- * @param folder - Folder in the bucket ('profile_pics' or 'vehicles')
+ * @param folder - Folder in the bucket ('profile_pics', 'vehicles', 'gallery', or 'services')
  * @param fileName - Optional custom file name (will generate UUID if not provided)
  */
 export async function uploadImage(
   fileUri: string,
-  folder: 'profile_pics' | 'vehicles',
+  folder: 'profile_pics' | 'vehicles' | 'gallery' | 'services',
   fileName?: string
 ): Promise<UploadResult> {
   try {

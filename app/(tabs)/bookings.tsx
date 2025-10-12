@@ -68,7 +68,7 @@ export default function BookingsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text variant="headlineSmall">My Bookings</Text>
+        <Text variant="headlineSmall" style={styles.title}>My Bookings</Text>
       </View>
 
       <SegmentedButtons
@@ -199,8 +199,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    padding: 24,
-    backgroundColor: 'white',
+     backgroundColor: '#3B82F6',
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FFF',
+    marginBottom: 4,
+    fontFamily: 'NunitoSans_700Bold',
   },
   tabs: {
     margin: 16,

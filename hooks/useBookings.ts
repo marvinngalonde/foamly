@@ -54,8 +54,10 @@ export function useCreateBooking(customerId: string) {
 
   return useMutation({
     mutationFn: (input: CreateBookingInput) => createBooking(customerId, input),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Invalidate both customer and provider queries so both see the booking
       queryClient.invalidateQueries({ queryKey: bookingKeys.customer(customerId) });
+      queryClient.invalidateQueries({ queryKey: bookingKeys.provider(data.providerId) });
     },
   });
 }

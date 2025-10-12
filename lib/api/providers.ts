@@ -7,9 +7,11 @@ export interface Provider {
   businessName: string;
   bio?: string;
   serviceArea: string;
+  address?: string;
   rating: string;
   totalReviews: string;
   verified: boolean;
+  gallery?: string[];
   createdAt: Date;
   updatedAt: Date;
   user?: {
@@ -47,9 +49,11 @@ export async function getProviders(): Promise<Provider[]> {
     businessName: provider.business_name,
     bio: provider.bio,
     serviceArea: provider.service_area,
+    address: provider.address,
     rating: provider.rating,
     totalReviews: provider.total_reviews,
     verified: provider.verified,
+    gallery: provider.gallery,
     createdAt: new Date(provider.created_at),
     updatedAt: new Date(provider.updated_at),
     user: provider.users ? {
@@ -89,9 +93,11 @@ export async function getProviderById(id: string): Promise<Provider> {
     businessName: data.business_name,
     bio: data.bio,
     serviceArea: data.service_area,
+    address: data.address,
     rating: data.rating,
     totalReviews: data.total_reviews,
     verified: data.verified,
+    gallery: data.gallery,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
     user: data.users ? {
@@ -134,9 +140,11 @@ export async function getProviderByUserId(userId: string): Promise<Provider | nu
     businessName: data.business_name,
     bio: data.bio,
     serviceArea: data.service_area,
+    address: data.address,
     rating: data.rating,
     totalReviews: data.total_reviews,
     verified: data.verified,
+    gallery: data.gallery,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
     user: data.users ? {
@@ -157,7 +165,9 @@ export async function updateProviderProfile(id: string, input: UpdateProviderPro
   if (input.businessName) updateData.business_name = input.businessName;
   if (input.bio !== undefined) updateData.bio = input.bio;
   if (input.serviceArea) updateData.service_area = input.serviceArea;
+  if (input.address !== undefined) updateData.address = input.address;
   if (input.profilePicture !== undefined) updateData.profile_picture = input.profilePicture;
+  if (input.gallery !== undefined) updateData.gallery = input.gallery;
 
   updateData.updated_at = new Date().toISOString();
 
@@ -176,9 +186,11 @@ export async function updateProviderProfile(id: string, input: UpdateProviderPro
     businessName: data.business_name,
     bio: data.bio,
     serviceArea: data.service_area,
+    address: data.address,
     rating: data.rating,
     totalReviews: data.total_reviews,
     verified: data.verified,
+    gallery: data.gallery,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
   };
@@ -210,9 +222,11 @@ export async function searchProviders(serviceArea: string): Promise<Provider[]> 
     businessName: provider.business_name,
     bio: provider.bio,
     serviceArea: provider.service_area,
+    address: provider.address,
     rating: provider.rating,
     totalReviews: provider.total_reviews,
     verified: provider.verified,
+    gallery: provider.gallery,
     createdAt: new Date(provider.created_at),
     updatedAt: new Date(provider.updated_at),
     user: provider.users ? {

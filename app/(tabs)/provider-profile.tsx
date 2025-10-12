@@ -2,9 +2,10 @@ import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, ActivityI
 import { Text, Button, TextInput } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useProviderByUserId, useUpdateProviderProfile } from '@/hooks/useProviders';
+import { useUpdateUser } from '@/hooks/useUsers';
 import { pickImage, uploadImage } from '@/lib/storage';
 
 export default function ProviderProfileScreen() {
@@ -12,21 +13,35 @@ export default function ProviderProfileScreen() {
   const { user } = useAuthStore();
   const { data: provider, isLoading } = useProviderByUserId(user?.id || '');
   const updateProfileMutation = useUpdateProviderProfile();
+  const updateUserMutation = useUpdateUser();
 
   const [isEditing, setIsEditing] = useState(false);
   const [businessName, setBusinessName] = useState('');
   const [bio, setBio] = useState('');
   const [serviceArea, setServiceArea] = useState('');
+  const [address, setAddress] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
 
   // Initialize form when provider data loads
-  useState(() => {
+  useEffect(() => {
     if (provider) {
       setBusinessName(provider.businessName);
-      setBio((provider as any).bio || '');
-      setServiceArea((provider as any).serviceArea || '');
+      setBio(provider.bio || '');
+      setServiceArea(provider.serviceArea);
+      setAddress(provider.address || '');
+      setGalleryImages(provider.gallery || []);
     }
-  });
+    if (user) {
+      setFirstName(user.firstName);
+      setLastName(user.lastName);
+      setPhoneNumber(user.phoneNumber);
+    }
+  }, [provider, user]);
 
   const handleUploadProfilePicture = async () => {
     try {
@@ -56,16 +71,89 @@ export default function ProviderProfileScreen() {
     }
   };
 
-  const handleSave = async () => {
+  const handleAddGalleryImage = async () => {
     try {
+      setUploadingGallery(true);
+
+      const image = await pickImage();
+      if (!image) {
+        setUploadingGallery(false);
+        return;
+      }
+
+      // Upload to Supabase
+      const result = await uploadImage(image.uri, 'gallery', `provider_${provider?.id}_gallery_${Date.now()}.jpg`);
+
+      // Update gallery in provider profile
+      const updatedGallery = [...galleryImages, result.url];
+      setGalleryImages(updatedGallery);
+
       await updateProfileMutation.mutateAsync({
         id: provider?.id || '',
-        input: {
-          businessName,
-          bio,
-          serviceArea,
-        },
+        input: { gallery: updatedGallery },
       });
+
+      Alert.alert('Success', 'Image added to gallery!');
+    } catch (error: any) {
+      console.error('Error uploading gallery image:', error);
+      Alert.alert('Error', error.message || 'Failed to upload image');
+    } finally {
+      setUploadingGallery(false);
+    }
+  };
+
+  const handleDeleteGalleryImage = async (imageUrl: string) => {
+    Alert.alert(
+      'Delete Image',
+      'Are you sure you want to delete this image?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const updatedGallery = galleryImages.filter(img => img !== imageUrl);
+              setGalleryImages(updatedGallery);
+
+              await updateProfileMutation.mutateAsync({
+                id: provider?.id || '',
+                input: { gallery: updatedGallery },
+              });
+
+              Alert.alert('Success', 'Image deleted from gallery!');
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to delete image');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSave = async () => {
+    try {
+      // Update both provider profile and user info
+      await Promise.all([
+        updateProfileMutation.mutateAsync({
+          id: provider?.id || '',
+          input: {
+            businessName,
+            bio,
+            serviceArea,
+            address,
+            gallery: galleryImages,
+          },
+        }),
+        updateUserMutation.mutateAsync({
+          id: user?.id || '',
+          input: {
+            firstName,
+            lastName,
+            phoneNumber,
+          },
+        }),
+      ]);
 
       Alert.alert('Success', 'Profile updated successfully!');
       setIsEditing(false);
@@ -96,7 +184,7 @@ export default function ProviderProfileScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.push('/(tabs)')} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Provider Profile</Text>
@@ -113,9 +201,9 @@ export default function ProviderProfileScreen() {
         {/* Profile Picture Section */}
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
-            {(provider as any).profilePicture ? (
+            {provider.user?.profilePicture ? (
               <Image
-                source={{ uri: (provider as any).profilePicture }}
+                source={{ uri: provider.user.profilePicture }}
                 style={styles.avatar}
               />
             ) : (
@@ -185,6 +273,104 @@ export default function ProviderProfileScreen() {
                 outlineColor="#E5E7EB"
                 activeOutlineColor="#3B82F6"
               />
+              <TextInput
+                label="Business Address"
+                value={address}
+                onChangeText={setAddress}
+                style={styles.input}
+                mode="outlined"
+                outlineColor="#E5E7EB"
+                activeOutlineColor="#3B82F6"
+                multiline
+                numberOfLines={2}
+              />
+            </>
+          ) : (
+            <>
+              <View style={styles.infoRow}>
+                <MaterialCommunityIcons name="store" size={20} color="#666" />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Business Name</Text>
+                  <Text style={styles.infoValue}>{provider.businessName}</Text>
+                </View>
+              </View>
+
+              {provider.bio && (
+                <View style={styles.infoRow}>
+                  <MaterialCommunityIcons name="text" size={20} color="#666" />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>About</Text>
+                    <Text style={styles.infoValue}>{provider.bio}</Text>
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.infoRow}>
+                <MaterialCommunityIcons name="map-marker" size={20} color="#666" />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Service Area</Text>
+                  <Text style={styles.infoValue}>{provider.serviceArea}</Text>
+                </View>
+              </View>
+
+              {provider.address && (
+                <View style={styles.infoRow}>
+                  <MaterialCommunityIcons name="home-map-marker" size={20} color="#666" />
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Business Address</Text>
+                    <Text style={styles.infoValue}>{provider.address}</Text>
+                  </View>
+                </View>
+              )}
+            </>
+          )}
+        </View>
+
+        {/* Personal Information */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Personal Information</Text>
+
+          {isEditing ? (
+            <>
+              <TextInput
+                label="First Name"
+                value={firstName}
+                onChangeText={setFirstName}
+                style={styles.input}
+                mode="outlined"
+                outlineColor="#E5E7EB"
+                activeOutlineColor="#3B82F6"
+              />
+              <TextInput
+                label="Last Name"
+                value={lastName}
+                onChangeText={setLastName}
+                style={styles.input}
+                mode="outlined"
+                outlineColor="#E5E7EB"
+                activeOutlineColor="#3B82F6"
+              />
+              <TextInput
+                label="Phone Number"
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                style={styles.input}
+                mode="outlined"
+                outlineColor="#E5E7EB"
+                activeOutlineColor="#3B82F6"
+                keyboardType="phone-pad"
+              />
+              <TextInput
+                label="Email"
+                value={user?.email || ''}
+                style={styles.input}
+                mode="outlined"
+                outlineColor="#E5E7EB"
+                activeOutlineColor="#3B82F6"
+                disabled
+                editable={false}
+              />
+              <Text style={styles.fieldHint}>Email cannot be changed</Text>
 
               <View style={styles.buttonRow}>
                 <Button
@@ -200,7 +386,7 @@ export default function ProviderProfileScreen() {
                   onPress={handleSave}
                   style={[styles.button, styles.saveButton]}
                   buttonColor="#3B82F6"
-                  loading={updateProfileMutation.isPending}
+                  loading={updateProfileMutation.isPending || updateUserMutation.isPending}
                 >
                   Save Changes
                 </Button>
@@ -209,28 +395,10 @@ export default function ProviderProfileScreen() {
           ) : (
             <>
               <View style={styles.infoRow}>
-                <MaterialCommunityIcons name="store" size={20} color="#666" />
+                <MaterialCommunityIcons name="account" size={20} color="#666" />
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Business Name</Text>
-                  <Text style={styles.infoValue}>{provider.businessName}</Text>
-                </View>
-              </View>
-
-              {(provider as any).bio && (
-                <View style={styles.infoRow}>
-                  <MaterialCommunityIcons name="text" size={20} color="#666" />
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>About</Text>
-                    <Text style={styles.infoValue}>{(provider as any).bio}</Text>
-                  </View>
-                </View>
-              )}
-
-              <View style={styles.infoRow}>
-                <MaterialCommunityIcons name="map-marker" size={20} color="#666" />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Service Area</Text>
-                  <Text style={styles.infoValue}>{(provider as any).serviceArea}</Text>
+                  <Text style={styles.infoLabel}>Full Name</Text>
+                  <Text style={styles.infoValue}>{user?.firstName} {user?.lastName}</Text>
                 </View>
               </View>
 
@@ -276,16 +444,35 @@ export default function ProviderProfileScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Gallery</Text>
-            <TouchableOpacity>
-              <MaterialCommunityIcons name="plus" size={24} color="#3B82F6" />
+            <TouchableOpacity onPress={handleAddGalleryImage} disabled={uploadingGallery}>
+              {uploadingGallery ? (
+                <ActivityIndicator size="small" color="#3B82F6" />
+              ) : (
+                <MaterialCommunityIcons name="plus" size={24} color="#3B82F6" />
+              )}
             </TouchableOpacity>
           </View>
           <View style={styles.galleryGrid}>
-            {/* Gallery will be implemented with image upload */}
-            <View style={styles.galleryPlaceholder}>
-              <MaterialCommunityIcons name="image-plus" size={48} color="#CCC" />
-              <Text style={styles.galleryPlaceholderText}>Add photos to showcase your work</Text>
-            </View>
+            {galleryImages.length === 0 ? (
+              <View style={styles.galleryPlaceholder}>
+                <MaterialCommunityIcons name="image-plus" size={48} color="#CCC" />
+                <Text style={styles.galleryPlaceholderText}>Add photos to showcase your work</Text>
+              </View>
+            ) : (
+              <>
+                {galleryImages.map((imageUrl, index) => (
+                  <View key={index} style={styles.galleryImageContainer}>
+                    <Image source={{ uri: imageUrl }} style={styles.galleryImage} />
+                    <TouchableOpacity
+                      style={styles.deleteImageButton}
+                      onPress={() => handleDeleteGalleryImage(imageUrl)}
+                    >
+                      <MaterialCommunityIcons name="close-circle" size={24} color="#DC2626" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </>
+            )}
           </View>
         </View>
 
@@ -417,6 +604,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     backgroundColor: '#FFF',
   },
+  fieldHint: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: -12,
+    marginBottom: 16,
+    fontFamily: 'NunitoSans_400Regular',
+  },
   buttonRow: {
     flexDirection: 'row',
     gap: 12,
@@ -492,6 +686,31 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginTop: 12,
     fontFamily: 'NunitoSans_400Regular',
+  },
+  galleryImageContainer: {
+    position: 'relative',
+    width: '48%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#F3F4F6',
+  },
+  galleryImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  deleteImageButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   bottomPadding: {
     height: 40,

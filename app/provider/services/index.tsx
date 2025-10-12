@@ -1,4 +1,4 @@
-import { View, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Image,ActivityIndicator, RefreshControl } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -6,12 +6,15 @@ import { useState, useMemo } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useProviderByUserId } from '@/hooks/useProviders';
 import { useProviderServices, useUpdateService, useDeleteService } from '@/hooks/useServices';
+import { useProviderBookings } from '@/hooks/useBookings';
+
 
 export default function ProviderServicesScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { data: provider } = useProviderByUserId(user?.id || '');
   const { data: services = [], isLoading, refetch } = useProviderServices(provider?.id || '');
+  const { data: bookings = [] } = useProviderBookings(provider?.id || '');
   const updateServiceMutation = useUpdateService();
   const deleteServiceMutation = useDeleteService();
   const [refreshing, setRefreshing] = useState(false);
@@ -31,12 +34,32 @@ export default function ProviderServicesScreen() {
     return services.filter(s => s.serviceType === selectedCategory);
   }, [services, selectedCategory]);
 
+  // Calculate real metrics
   const activeServices = services.filter(s => s.isActive).length;
-  const totalRevenue = 150000; // TODO: Calculate from completed bookings
-  const mostPopular = services.sort((a, b) => {
-    // TODO: Sort by booking count
-    return 0;
-  })[0];
+
+  const totalRevenue = bookings
+    .filter(b => b.status === 'completed')
+    .reduce((sum, b) => sum + parseFloat(b.totalPrice), 0);
+
+  // Get booking counts per service
+  const serviceBookingCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    bookings.forEach(booking => {
+      if (booking.serviceId) {
+        counts[booking.serviceId] = (counts[booking.serviceId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [bookings]);
+
+  const mostPopular = useMemo(() => {
+    if (services.length === 0) return null;
+    return [...services].sort((a, b) => {
+      const aCount = serviceBookingCounts[a.id] || 0;
+      const bCount = serviceBookingCounts[b.id] || 0;
+      return bCount - aCount;
+    })[0];
+  }, [services, serviceBookingCounts]);
 
   const handleToggleActive = (serviceId: string, currentStatus: boolean) => {
     updateServiceMutation.mutate(
@@ -101,12 +124,7 @@ export default function ProviderServicesScreen() {
           <Text style={styles.headerTitle}>Services</Text>
           <Text style={styles.headerSubtitle}>{services.length} total • {activeServices} active</Text>
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push('/provider/services/add')}
-        >
-          <MaterialCommunityIcons name="plus" size={24} color="#FFF" />
-        </TouchableOpacity>
+       
       </View>
 
       {/* Stats Cards */}
@@ -123,7 +141,9 @@ export default function ProviderServicesScreen() {
         </View>
         <View style={styles.statCard}>
           <MaterialCommunityIcons name="star" size={24} color="#FFA500" />
-          <Text style={styles.statValue}>{mostPopular?.name.substring(0, 10) || 'N/A'}</Text>
+          <Text style={styles.statValue} numberOfLines={1}>
+            {mostPopular?.name.substring(0, 12) || 'N/A'}
+          </Text>
           <Text style={styles.statLabel}>Most Popular</Text>
         </View>
       </View>
@@ -200,11 +220,17 @@ export default function ProviderServicesScreen() {
                 <View style={styles.serviceHeader}>
                   <View style={styles.serviceHeaderLeft}>
                     <View style={[styles.serviceIcon, { backgroundColor: `${getCategoryColor(service.serviceType)}20` }]}>
-                      <MaterialCommunityIcons
+                      {!service.imageUrl ?  (<MaterialCommunityIcons
                         name={getCategoryIcon(service.serviceType)}
                         size={24}
                         color={getCategoryColor(service.serviceType)}
-                      />
+                      />)
+                       :
+                        (<Image source={{ uri: service.imageUrl }} style={{ width: 48, height: 48, borderRadius: 24 }} />)
+                      
+                      
+                      }
+                     
                     </View>
                     <View style={styles.serviceInfo}>
                       <Text style={styles.serviceName}>{service.name}</Text>
@@ -236,7 +262,7 @@ export default function ProviderServicesScreen() {
                   </View>
                   <View style={styles.detailItem}>
                     <MaterialCommunityIcons name="calendar-check" size={16} color="#666" />
-                    <Text style={styles.detailText}>25 bookings</Text>
+                    <Text style={styles.detailText}>{serviceBookingCounts[service.id] || 0} bookings</Text>
                   </View>
                 </View>
 
@@ -325,8 +351,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#3B82F6',
     paddingTop: 50,
+   
     paddingHorizontal: 20,
     paddingBottom: 20,
     flexDirection: 'row',
@@ -338,12 +365,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#ffffffff',
     fontFamily: 'NunitoSans_700Bold',
   },
   headerSubtitle: {
     fontSize: 13,
-    color: '#666',
+    color: '#eeeeeeff',
     marginTop: 4,
     fontFamily: 'NunitoSans_400Regular',
   },
