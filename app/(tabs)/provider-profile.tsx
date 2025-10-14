@@ -1,5 +1,5 @@
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
-import { Text, Button, TextInput } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, FlatList } from 'react-native';
+import { Text, Button } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState, useEffect } from 'react';
@@ -8,6 +8,8 @@ import { useProviderByUserId, useUpdateProviderProfile } from '@/hooks/useProvid
 import { useUpdateUser } from '@/hooks/useUsers';
 import { pickImage, uploadImage } from '@/lib/storage';
 
+type TabType = 'gallery' | 'services' | 'reviews' | 'about';
+
 export default function ProviderProfileScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
@@ -15,6 +17,7 @@ export default function ProviderProfileScreen() {
   const updateProfileMutation = useUpdateProviderProfile();
   const updateUserMutation = useUpdateUser();
 
+  const [activeTab, setActiveTab] = useState<TabType>('gallery');
   const [isEditing, setIsEditing] = useState(false);
   const [businessName, setBusinessName] = useState('');
   const [bio, setBio] = useState('');
@@ -26,6 +29,7 @@ export default function ProviderProfileScreen() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [liked, setLiked] = useState(false);
 
   // Initialize form when provider data loads
   useEffect(() => {
@@ -46,17 +50,13 @@ export default function ProviderProfileScreen() {
   const handleUploadProfilePicture = async () => {
     try {
       setUploadingImage(true);
-
       const image = await pickImage();
       if (!image) {
         setUploadingImage(false);
         return;
       }
 
-      // Upload to Supabase
       const result = await uploadImage(image.uri, 'profile_pics', `provider_${provider?.id}_${Date.now()}.jpg`);
-
-      // Update provider profile
       await updateProfileMutation.mutateAsync({
         id: provider?.id || '',
         input: { profilePicture: result.url },
@@ -74,17 +74,13 @@ export default function ProviderProfileScreen() {
   const handleAddGalleryImage = async () => {
     try {
       setUploadingGallery(true);
-
       const image = await pickImage();
       if (!image) {
         setUploadingGallery(false);
         return;
       }
 
-      // Upload to Supabase
       const result = await uploadImage(image.uri, 'gallery', `provider_${provider?.id}_gallery_${Date.now()}.jpg`);
-
-      // Update gallery in provider profile
       const updatedGallery = [...galleryImages, result.url];
       setGalleryImages(updatedGallery);
 
@@ -115,12 +111,10 @@ export default function ProviderProfileScreen() {
             try {
               const updatedGallery = galleryImages.filter(img => img !== imageUrl);
               setGalleryImages(updatedGallery);
-
               await updateProfileMutation.mutateAsync({
                 id: provider?.id || '',
                 input: { gallery: updatedGallery },
               });
-
               Alert.alert('Success', 'Image deleted from gallery!');
             } catch (error: any) {
               Alert.alert('Error', error.message || 'Failed to delete image');
@@ -133,28 +127,16 @@ export default function ProviderProfileScreen() {
 
   const handleSave = async () => {
     try {
-      // Update both provider profile and user info
       await Promise.all([
         updateProfileMutation.mutateAsync({
           id: provider?.id || '',
-          input: {
-            businessName,
-            bio,
-            serviceArea,
-            address,
-            gallery: galleryImages,
-          },
+          input: { businessName, bio, serviceArea, address, gallery: galleryImages },
         }),
         updateUserMutation.mutateAsync({
           id: user?.id || '',
-          input: {
-            firstName,
-            lastName,
-            phoneNumber,
-          },
+          input: { firstName, lastName, phoneNumber },
         }),
       ]);
-
       Alert.alert('Success', 'Profile updated successfully!');
       setIsEditing(false);
     } catch (error: any) {
@@ -162,11 +144,25 @@ export default function ProviderProfileScreen() {
     }
   };
 
+  // Mock services data
+  const services = [
+    { id: '1', name: 'Car Wash', icon: 'car-wash', description: 'Complete exterior wash' },
+    { id: '2', name: 'Car Polish', icon: 'polish', description: 'Professional polishing' },
+    { id: '3', name: 'Interior Wash', icon: 'car-seat', description: 'Deep interior cleaning' },
+    { id: '4', name: 'Engine Wash', icon: 'engine', description: 'Engine bay cleaning' },
+  ];
+
+  // Mock promotions
+  const promotions = [
+    { id: '1', title: '30% OFF', code: 'Wash120', icon: 'tag-outline', color: '#3B82F6' },
+    { id: '2', title: '10% OFF', code: 'New', icon: 'cash', color: '#10B981' },
+  ];
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={{ marginTop: 16 }}>Loading profile...</Text>
+        <Text style={{ marginTop: 16, color: '#666' }}>Loading profile...</Text>
       </View>
     );
   }
@@ -180,304 +176,202 @@ export default function ProviderProfileScreen() {
     );
   }
 
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'gallery':
+        return (
+          <View style={styles.tabContent}>
+            <View style={styles.galleryHeader}>
+              <Text style={styles.galleryTitle}>Work Gallery</Text>
+              <TouchableOpacity 
+                style={styles.addPhotoButton}
+                onPress={handleAddGalleryImage}
+                disabled={uploadingGallery}
+              >
+                {uploadingGallery ? (
+                  <ActivityIndicator size="small" color="#3B82F6" />
+                ) : (
+                  <MaterialCommunityIcons name="plus" size={20} color="#3B82F6" />
+                )}
+                <Text style={styles.addPhotoText}>Add Photo</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {galleryImages.length === 0 ? (
+              <View style={styles.emptyGallery}>
+                <MaterialCommunityIcons name="image-multiple" size={64} color="#E5E7EB" />
+                <Text style={styles.emptyGalleryText}>No photos yet</Text>
+                <Text style={styles.emptyGallerySubtext}>Add photos to showcase your work</Text>
+              </View>
+            ) : (
+              <View style={styles.galleryGrid}>
+                {galleryImages.map((imageUrl, index) => (
+                  <View key={index} style={styles.galleryItem}>
+                    <Image source={{ uri: imageUrl }} style={styles.galleryImage} />
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteGalleryImage(imageUrl)}
+                    >
+                      <MaterialCommunityIcons name="close" size={16} color="#FFF" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        );
+
+      case 'services':
+        return (
+          <View style={styles.tabContent}>
+            <Text style={styles.servicesTitle}>Our Services</Text>
+            <View style={styles.servicesGrid}>
+              {services.map((service) => (
+                <View key={service.id} style={styles.serviceCard}>
+                  <View style={styles.serviceIcon}>
+                    <MaterialCommunityIcons name={service.icon as any} size={32} color="#3B82F6" />
+                  </View>
+                  <Text style={styles.serviceName}>{service.name}</Text>
+                  <Text style={styles.serviceDescription}>{service.description}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        );
+
+      case 'reviews':
+        return (
+          <View style={styles.tabContent}>
+            <Text style={styles.reviewsTitle}>Customer Reviews</Text>
+            <View style={styles.ratingOverview}>
+              <Text style={styles.ratingNumber}>{parseFloat(provider.rating).toFixed(1)}</Text>
+              <MaterialCommunityIcons name="star" size={24} color="#FFA500" />
+              <Text style={styles.reviewsCount}>({provider.totalReviews} reviews)</Text>
+            </View>
+            {/* Add review list here */}
+          </View>
+        );
+
+      case 'about':
+        return (
+          <View style={styles.tabContent}>
+            <Text style={styles.aboutTitle}>About Us</Text>
+            <Text style={styles.aboutText}>{provider.bio || 'No description provided.'}</Text>
+            <View style={styles.infoSection}>
+              <View style={styles.infoItem}>
+                <MaterialCommunityIcons name="map-marker" size={20} color="#666" />
+                <Text style={styles.infoText}>{provider.serviceArea}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <MaterialCommunityIcons name="phone" size={20} color="#666" />
+                <Text style={styles.infoText}>{user?.phoneNumber}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <MaterialCommunityIcons name="email" size={20} color="#666" />
+                <Text style={styles.infoText}>{user?.email}</Text>
+              </View>
+            </View>
+          </View>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/(tabs)')} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Provider Profile</Text>
-        <TouchableOpacity onPress={() => setIsEditing(!isEditing)}>
-          <MaterialCommunityIcons
-            name={isEditing ? 'close' : 'pencil'}
-            size={24}
-            color="#FFF"
+      {/* Header Image with Like Button */}
+      <View style={styles.headerImageContainer}>
+        <Image 
+          source={{ uri: 'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=800' }} 
+          style={styles.headerImage}
+        />
+        <TouchableOpacity 
+          style={styles.likeButton}
+          onPress={() => setLiked(!liked)}
+        >
+          <MaterialCommunityIcons 
+            name={liked ? "heart" : "heart-outline"} 
+            size={28} 
+            color={liked ? "#DC2626" : "#FFF"} 
           />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Profile Picture Section */}
-        <View style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
-            {provider.user?.profilePicture ? (
-              <Image
-                source={{ uri: provider.user.profilePicture }}
-                style={styles.avatar}
-              />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <MaterialCommunityIcons name="store" size={64} color="#3B82F6" />
+        {/* Service Details */}
+        <View style={styles.serviceInfo}>
+          <Text style={styles.serviceName}>{provider.businessName}</Text>
+          <View style={styles.ratingLocation}>
+            <View style={styles.rating}>
+              <MaterialCommunityIcons name="star" size={16} color="#FFA500" />
+              <Text style={styles.ratingText}>5.0</Text>
+              <Text style={styles.reviewsText}>(134)</Text>
+            </View>
+            <View style={styles.location}>
+              <MaterialCommunityIcons name="map-marker" size={16} color="#666" />
+              <Text style={styles.locationText}>24 Green Street · 2km</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Promotions */}
+        <View style={styles.promotions}>
+          {promotions.map((promo) => (
+            <View key={promo.id} style={[styles.promoCard, { borderLeftColor: promo.color }]}>
+              <MaterialCommunityIcons name={promo.icon as any} size={20} color={promo.color} />
+              <View style={styles.promoText}>
+                <Text style={styles.promoTitle}>{promo.title}</Text>
+                <Text style={styles.promoCode}>use code {promo.code}</Text>
               </View>
-            )}
+            </View>
+          ))}
+        </View>
+
+        {/* Navigation Tabs */}
+        <View style={styles.tabs}>
+          {[
+            { id: 'gallery' as TabType, label: 'Gallery', icon: 'image-multiple' },
+            { id: 'services' as TabType, label: 'Services', icon: 'car-wash' },
+            { id: 'reviews' as TabType, label: 'Reviews', icon: 'star' },
+            { id: 'about' as TabType, label: 'About', icon: 'information' },
+          ].map((tab) => (
             <TouchableOpacity
-              style={styles.cameraButton}
-              onPress={handleUploadProfilePicture}
-              disabled={uploadingImage}
+              key={tab.id}
+              style={[styles.tab, activeTab === tab.id && styles.activeTab]}
+              onPress={() => setActiveTab(tab.id)}
             >
-              {uploadingImage ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <MaterialCommunityIcons name="camera" size={20} color="#FFF" />
-              )}
+              <MaterialCommunityIcons 
+                name={tab.icon as any} 
+                size={20} 
+                color={activeTab === tab.id ? '#3B82F6' : '#666'} 
+              />
+              <Text style={[styles.tabText, activeTab === tab.id && styles.activeTabText]}>
+                {tab.label}
+              </Text>
             </TouchableOpacity>
-          </View>
-
-          <View style={styles.ratingContainer}>
-            <MaterialCommunityIcons name="star" size={20} color="#FFA500" />
-            <Text style={styles.rating}>{parseFloat(provider.rating).toFixed(1)}</Text>
-            <Text style={styles.reviews}>({provider.totalReviews} reviews)</Text>
-          </View>
-
-          {provider.verified && (
-            <View style={styles.verifiedBadge}>
-              <MaterialCommunityIcons name="check-decagram" size={16} color="#10B981" />
-              <Text style={styles.verifiedText}>Verified Provider</Text>
-            </View>
-          )}
+          ))}
         </View>
 
-        {/* Profile Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Business Information</Text>
-
-          {isEditing ? (
-            <>
-              <TextInput
-                label="Business Name"
-                value={businessName}
-                onChangeText={setBusinessName}
-                style={styles.input}
-                mode="outlined"
-                outlineColor="#E5E7EB"
-                activeOutlineColor="#3B82F6"
-              />
-              <TextInput
-                label="Bio"
-                value={bio}
-                onChangeText={setBio}
-                style={styles.input}
-                mode="outlined"
-                outlineColor="#E5E7EB"
-                activeOutlineColor="#3B82F6"
-                multiline
-                numberOfLines={4}
-              />
-              <TextInput
-                label="Service Area"
-                value={serviceArea}
-                onChangeText={setServiceArea}
-                style={styles.input}
-                mode="outlined"
-                outlineColor="#E5E7EB"
-                activeOutlineColor="#3B82F6"
-              />
-              <TextInput
-                label="Business Address"
-                value={address}
-                onChangeText={setAddress}
-                style={styles.input}
-                mode="outlined"
-                outlineColor="#E5E7EB"
-                activeOutlineColor="#3B82F6"
-                multiline
-                numberOfLines={2}
-              />
-            </>
-          ) : (
-            <>
-              <View style={styles.infoRow}>
-                <MaterialCommunityIcons name="store" size={20} color="#666" />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Business Name</Text>
-                  <Text style={styles.infoValue}>{provider.businessName}</Text>
-                </View>
-              </View>
-
-              {provider.bio && (
-                <View style={styles.infoRow}>
-                  <MaterialCommunityIcons name="text" size={20} color="#666" />
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>About</Text>
-                    <Text style={styles.infoValue}>{provider.bio}</Text>
-                  </View>
-                </View>
-              )}
-
-              <View style={styles.infoRow}>
-                <MaterialCommunityIcons name="map-marker" size={20} color="#666" />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Service Area</Text>
-                  <Text style={styles.infoValue}>{provider.serviceArea}</Text>
-                </View>
-              </View>
-
-              {provider.address && (
-                <View style={styles.infoRow}>
-                  <MaterialCommunityIcons name="home-map-marker" size={20} color="#666" />
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Business Address</Text>
-                    <Text style={styles.infoValue}>{provider.address}</Text>
-                  </View>
-                </View>
-              )}
-            </>
-          )}
-        </View>
-
-        {/* Personal Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-
-          {isEditing ? (
-            <>
-              <TextInput
-                label="First Name"
-                value={firstName}
-                onChangeText={setFirstName}
-                style={styles.input}
-                mode="outlined"
-                outlineColor="#E5E7EB"
-                activeOutlineColor="#3B82F6"
-              />
-              <TextInput
-                label="Last Name"
-                value={lastName}
-                onChangeText={setLastName}
-                style={styles.input}
-                mode="outlined"
-                outlineColor="#E5E7EB"
-                activeOutlineColor="#3B82F6"
-              />
-              <TextInput
-                label="Phone Number"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                style={styles.input}
-                mode="outlined"
-                outlineColor="#E5E7EB"
-                activeOutlineColor="#3B82F6"
-                keyboardType="phone-pad"
-              />
-              <TextInput
-                label="Email"
-                value={user?.email || ''}
-                style={styles.input}
-                mode="outlined"
-                outlineColor="#E5E7EB"
-                activeOutlineColor="#3B82F6"
-                disabled
-                editable={false}
-              />
-              <Text style={styles.fieldHint}>Email cannot be changed</Text>
-
-              <View style={styles.buttonRow}>
-                <Button
-                  mode="outlined"
-                  onPress={() => setIsEditing(false)}
-                  style={[styles.button, styles.cancelButton]}
-                  textColor="#666"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  mode="contained"
-                  onPress={handleSave}
-                  style={[styles.button, styles.saveButton]}
-                  buttonColor="#3B82F6"
-                  loading={updateProfileMutation.isPending || updateUserMutation.isPending}
-                >
-                  Save Changes
-                </Button>
-              </View>
-            </>
-          ) : (
-            <>
-              <View style={styles.infoRow}>
-                <MaterialCommunityIcons name="account" size={20} color="#666" />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Full Name</Text>
-                  <Text style={styles.infoValue}>{user?.firstName} {user?.lastName}</Text>
-                </View>
-              </View>
-
-              <View style={styles.infoRow}>
-                <MaterialCommunityIcons name="email" size={20} color="#666" />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Email</Text>
-                  <Text style={styles.infoValue}>{user?.email}</Text>
-                </View>
-              </View>
-
-              <View style={styles.infoRow}>
-                <MaterialCommunityIcons name="phone" size={20} color="#666" />
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Phone</Text>
-                  <Text style={styles.infoValue}>{user?.phoneNumber}</Text>
-                </View>
-              </View>
-            </>
-          )}
-        </View>
-
-        {/* Quick Stats */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Statistics</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{provider.totalReviews}</Text>
-              <Text style={styles.statLabel}>Reviews</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{parseFloat(provider.rating).toFixed(1)}</Text>
-              <Text style={styles.statLabel}>Rating</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{provider.verified ? 'Yes' : 'No'}</Text>
-              <Text style={styles.statLabel}>Verified</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Gallery Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Gallery</Text>
-            <TouchableOpacity onPress={handleAddGalleryImage} disabled={uploadingGallery}>
-              {uploadingGallery ? (
-                <ActivityIndicator size="small" color="#3B82F6" />
-              ) : (
-                <MaterialCommunityIcons name="plus" size={24} color="#3B82F6" />
-              )}
-            </TouchableOpacity>
-          </View>
-          <View style={styles.galleryGrid}>
-            {galleryImages.length === 0 ? (
-              <View style={styles.galleryPlaceholder}>
-                <MaterialCommunityIcons name="image-plus" size={48} color="#CCC" />
-                <Text style={styles.galleryPlaceholderText}>Add photos to showcase your work</Text>
-              </View>
-            ) : (
-              <>
-                {galleryImages.map((imageUrl, index) => (
-                  <View key={index} style={styles.galleryImageContainer}>
-                    <Image source={{ uri: imageUrl }} style={styles.galleryImage} />
-                    <TouchableOpacity
-                      style={styles.deleteImageButton}
-                      onPress={() => handleDeleteGalleryImage(imageUrl)}
-                    >
-                      <MaterialCommunityIcons name="close-circle" size={24} color="#DC2626" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </>
-            )}
-          </View>
-        </View>
+        {/* Tab Content */}
+        {renderTabContent()}
 
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      {/* Book Now Button */}
+      <View style={styles.footer}>
+        <Button
+          mode="contained"
+          style={styles.bookButton}
+          labelStyle={styles.bookButtonLabel}
+          onPress={() => router.push('/booking/service-selection')}
+          buttonColor="#3B82F6"
+        >
+          Book Now
+        </Button>
+      </View>
     </View>
   );
 }
@@ -485,234 +379,292 @@ export default function ProviderProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FFF',
   },
   centered: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    backgroundColor: '#3B82F6',
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    flexDirection: 'row',
+  headerImageContainer: {
+    position: 'relative',
+    height: 300,
+  },
+  headerImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  likeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFF',
-    fontFamily: 'NunitoSans_700Bold',
   },
   content: {
     flex: 1,
   },
-  profileSection: {
-    backgroundColor: '#FFF',
-    paddingVertical: 32,
-    alignItems: 'center',
+  serviceInfo: {
+    padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#F3F4F6',
   },
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: 16,
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cameraButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#3B82F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#FFF',
-  },
-  ratingContainer: {
+  // serviceName: {
+  //   fontSize: 24,
+  //   fontWeight: 'bold',
+  //   color: '#1F2937',
+  //   marginBottom: 8,
+  // },
+  ratingLocation: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: 16,
   },
   rating: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginLeft: 6,
-    fontFamily: 'NunitoSans_700Bold',
-  },
-  reviews: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-    fontFamily: 'NunitoSans_400Regular',
-  },
-  verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    gap: 4,
   },
-  verifiedText: {
+  ratingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  reviewsText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  location: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  locationText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  promotions: {
+    padding: 20,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  promoCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    gap: 12,
+  },
+  promoText: {
+    flex: 1,
+  },
+  promoTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  promoCode: {
     fontSize: 12,
-    color: '#10B981',
-    marginLeft: 4,
-    fontFamily: 'NunitoSans_600SemiBold',
+    color: '#6B7280',
   },
-  section: {
-    backgroundColor: '#FFF',
-    marginTop: 12,
+  tabs: {
+    flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  sectionHeader: {
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 6,
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#3B82F6',
+  },
+  tabText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  activeTabText: {
+    color: '#3B82F6',
+  },
+  tabContent: {
+    padding: 20,
+  },
+  galleryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  sectionTitle: {
+  galleryTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
-    fontFamily: 'NunitoSans_700Bold',
+    fontWeight: '600',
+    color: '#1F2937',
   },
-  input: {
-    marginBottom: 16,
-    backgroundColor: '#FFF',
-  },
-  fieldHint: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: -12,
-    marginBottom: 16,
-    fontFamily: 'NunitoSans_400Regular',
-  },
-  buttonRow: {
+  addPhotoButton: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  button: {
-    flex: 1,
-  },
-  cancelButton: {
-    borderColor: '#E5E7EB',
-  },
-  saveButton: {},
-  infoRow: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  infoContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-    fontFamily: 'NunitoSans_400Regular',
-  },
-  infoValue: {
-    fontSize: 15,
-    color: '#333',
-    fontFamily: 'NunitoSans_600SemiBold',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    padding: 16,
     alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 8,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+  addPhotoText: {
+    fontSize: 14,
+    color: '#3B82F6',
+    fontWeight: '500',
+  },
+  emptyGallery: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyGalleryText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 12,
     marginBottom: 4,
-    fontFamily: 'NunitoSans_700Bold',
   },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    fontFamily: 'NunitoSans_400Regular',
+  emptyGallerySubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
   },
   galleryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
   },
-  galleryPlaceholder: {
-    width: '100%',
-    height: 200,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderStyle: 'dashed',
-  },
-  galleryPlaceholderText: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 12,
-    fontFamily: 'NunitoSans_400Regular',
-  },
-  galleryImageContainer: {
-    position: 'relative',
+  galleryItem: {
     width: '48%',
     aspectRatio: 1,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#F3F4F6',
+    position: 'relative',
   },
   galleryImage: {
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
   },
-  deleteImageButton: {
+  deleteButton: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: '#FFF',
+    width: 24,
+    height: 24,
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  servicesTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  servicesGrid: {
+    gap: 16,
+  },
+  serviceCard: {
+    backgroundColor: '#F8FAFC',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  serviceIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  serviceName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  serviceDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  reviewsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  ratingOverview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  ratingNumber: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  reviewsCount: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  aboutTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  aboutText: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  infoSection: {
+    gap: 12,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  footer: {
+    padding: 20,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  bookButton: {
+    borderRadius: 12,
+    paddingVertical: 8,
+  },
+  bookButtonLabel: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   bottomPadding: {
-    height: 40,
+    height: 20,
   },
 });

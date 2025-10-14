@@ -1,4 +1,4 @@
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, TextInput } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -206,22 +206,16 @@ export default function BookingConfirmationScreen() {
         <View style={styles.notesCard}>
           <Text style={styles.notesTitle}>Special Instructions (Optional)</Text>
           <Text style={styles.notesSubtitle}>Add any special requests or notes for the provider</Text>
-          <TouchableOpacity
+          <TextInput
             style={styles.notesInput}
-            onPress={() => {
-              Alert.prompt(
-                'Special Instructions',
-                'Enter any special requests or notes',
-                (text) => setNotes(text),
-                'plain-text',
-                notes
-              );
-            }}
-          >
-            <Text style={[styles.notesInputText, !notes && styles.notesInputPlaceholder]}>
-              {notes || 'Tap to add notes...'}
-            </Text>
-          </TouchableOpacity>
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Enter any special requests or notes..."
+            placeholderTextColor="#999"
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
         </View>
 
         {/* Important Information */}
@@ -412,17 +406,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
     padding: 16,
     borderRadius: 12,
-    minHeight: 80,
-    borderWidth: 1,
+    minHeight: 100,
+    borderWidth: 2,
     borderColor: '#E5E7EB',
-  },
-  notesInputText: {
     fontSize: 14,
     color: '#333',
     fontFamily: 'NunitoSans_400Regular',
-  },
-  notesInputPlaceholder: {
-    color: '#999',
   },
   infoCard: {
     backgroundColor: '#F0FDF4',

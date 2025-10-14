@@ -48,6 +48,34 @@ export default function BookingsScreen() {
     }
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'check-circle';
+      case 'pending':
+        return 'clock';
+      case 'in_progress':
+        return 'progress-wrench';
+      case 'completed':
+        return 'check-all';
+      case 'cancelled':
+        return 'close-circle';
+      default:
+        return 'help-circle';
+    }
+  };
+
+  const formatStatusText = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'pending': 'Pending',
+      'confirmed': 'Confirmed',
+      'in_progress': 'In Progress',
+      'completed': 'Completed',
+      'cancelled': 'Cancelled'
+    };
+    return statusMap[status] || status;
+  };
+
   const handleCancel = (bookingId: string) => {
     cancelMutation.mutate(bookingId, {
       onSuccess: () => {
@@ -60,33 +88,47 @@ export default function BookingsScreen() {
     return (
       <View style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={{ marginTop: 16, color: '#666' }}>Loading bookings...</Text>
+        <Text style={{ marginTop: 16, color: '#666', fontSize: 16 }}>Loading your bookings...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <View style={styles.innerContainer}>
       <View style={styles.header}>
         <Text variant="headlineSmall" style={styles.title}>My Bookings</Text>
+        <Text variant="bodyMedium" style={styles.subtitle}>
+          Manage your service appointments
+        </Text>
       </View>
 
-      <SegmentedButtons
-        value={activeTab}
-        onValueChange={setActiveTab}
-        buttons={[
-          {
-            value: 'active',
-            label: `Active (${activeBookings.length})`,
-          },
-          {
-            value: 'past',
-            label: `Past (${pastBookings.length})`,
-          },
-        ]}
-        style={styles.tabs}
-        theme={{ colors: { secondaryContainer: '#3B82F6', onSecondaryContainer: '#FFFFFF' } }}
-      />
+      <View style={styles.tabsContainer}>
+        <SegmentedButtons
+          value={activeTab}
+          onValueChange={setActiveTab}
+          buttons={[
+            {
+              value: 'active',
+              label: `Active (${activeBookings.length})`,
+              style: styles.tabButton,
+            },
+            {
+              value: 'past',
+              label: `History (${pastBookings.length})`,
+              style: styles.tabButton,
+            },
+          ]}
+          style={styles.tabs}
+          theme={{ 
+            colors: { 
+              secondaryContainer: '#3B82F6', 
+              onSecondaryContainer: '#FFFFFF',
+              primary: '#3B82F6'
+            } 
+          }}
+        />
+      </View>
 
       <FlatList
         data={bookings}
@@ -94,74 +136,107 @@ export default function BookingsScreen() {
         contentContainerStyle={styles.list}
         onRefresh={refetch}
         refreshing={isLoading}
+        showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <Card style={styles.card}>
-            <Card.Content>
+          <Card style={styles.card} elevation={3}>
+            <Card.Content style={styles.cardContent}>
               <View style={styles.cardHeader}>
-                <Text variant="titleMedium">
-                  {item.service?.name || 'Service'}
+                <View style={styles.serviceInfo}>
+                  <Text variant="titleMedium" style={styles.serviceName}>
+                    {item.service?.name || 'Service'}
+                  </Text>
+                  <View style={styles.statusContainer}>
+                    <MaterialCommunityIcons 
+                      name={getStatusIcon(item.status)} 
+                      size={14} 
+                      color={getStatusColor(item.status)} 
+                    />
+                    <Chip
+                      compact
+                      mode="flat"
+                      textStyle={{ 
+                        color: getStatusColor(item.status), 
+                        fontWeight: '600',
+                        fontSize: 12,
+                        marginLeft: 4
+                      }}
+                      style={{ 
+                        backgroundColor: `${getStatusColor(item.status)}15`,
+                        height: 28,
+                        marginLeft: 6
+                      }}
+                    >
+                      {formatStatusText(item.status)}
+                    </Chip>
+                  </View>
+                </View>
+                <Text variant="titleLarge" style={styles.price}>
+                  ${parseFloat(item.totalPrice).toFixed(2)}
                 </Text>
-                <Chip
-                  mode="flat"
-                  textStyle={{ color: getStatusColor(item.status), fontWeight: 'bold' }}
-                  style={{ backgroundColor: `${getStatusColor(item.status)}20` }}
-                >
-                  {item.status.toUpperCase()}
-                </Chip>
               </View>
 
-              <View style={styles.detailRow}>
-                <MaterialCommunityIcons name="calendar" size={16} color="#666" />
-                <Text variant="bodyMedium" style={styles.detailText}>
-                  {new Date(item.scheduledDate).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit'
-                  })}
-                </Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <MaterialCommunityIcons name="map-marker" size={16} color="#666" />
-                <Text variant="bodySmall" style={styles.detailText}>
-                  {item.location}
-                </Text>
-              </View>
-
-              {item.provider && (
+              <View style={styles.detailsContainer}>
                 <View style={styles.detailRow}>
-                  <MaterialCommunityIcons name="store" size={16} color="#666" />
-                  <Text variant="bodySmall" style={styles.detailText}>
-                    {item.provider.businessName}
+                  <MaterialCommunityIcons name="calendar" size={18} color="#6B7280" />
+                  <Text variant="bodyMedium" style={styles.detailText}>
+                    {new Date(item.scheduledDate).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit'
+                    })}
                   </Text>
                 </View>
-              )}
 
-              {item.vehicle && (
                 <View style={styles.detailRow}>
-                  <MaterialCommunityIcons name="car" size={16} color="#666" />
+                  <MaterialCommunityIcons name="map-marker" size={18} color="#6B7280" />
                   <Text variant="bodySmall" style={styles.detailText}>
-                    {item.vehicle.year} {item.vehicle.make} {item.vehicle.model}
+                    {item.location}
                   </Text>
                 </View>
-              )}
 
-              <Text variant="titleMedium" style={styles.price}>
-                ${parseFloat(item.totalPrice).toFixed(2)}
-              </Text>
+                {item.provider && (
+                  <View style={styles.detailRow}>
+                    <MaterialCommunityIcons name="store" size={18} color="#6B7280" />
+                    <Text variant="bodySmall" style={styles.detailText}>
+                      {item.provider.businessName}
+                    </Text>
+                  </View>
+                )}
+
+                {item.vehicle && (
+                  <View style={styles.detailRow}>
+                    <MaterialCommunityIcons name="car" size={18} color="#6B7280" />
+                    <Text variant="bodySmall" style={styles.detailText}>
+                      {item.vehicle.year} {item.vehicle.make} {item.vehicle.model}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </Card.Content>
-            <Card.Actions>
+            
+            <Card.Actions style={styles.cardActions}>
               <Button
-                mode="contained"
-                buttonColor="#3B82F6"
+                mode="outlined"
+                style={styles.detailsButton}
+                labelStyle={styles.detailsButtonLabel}
                 onPress={() => router.push(`/booking/${item.id}/details`)}
+                icon="information"
               >
-                View Details
+                Details
               </Button>
               {(item.status === 'confirmed' || item.status === 'pending') && (
-                <Button onPress={() => handleCancel(item.id)} textColor="#DC2626">
+                <Button 
+                  mode="contained"
+                  style={styles.cancelButton}
+                  labelStyle={styles.cancelButtonLabel}
+                  onPress={() => handleCancel(item.id)}
+                  icon="close"
+                  buttonColor="#FEF2F2"
+                  textColor="#DC2626"
+                >
                   Cancel
                 </Button>
               )}
@@ -170,14 +245,24 @@ export default function BookingsScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <MaterialCommunityIcons name="calendar-blank" size={64} color="#D1D5DB" />
-            <Text variant="bodyLarge" style={{ marginTop: 16 }}>No bookings found</Text>
+            <MaterialCommunityIcons name="calendar-blank" size={80} color="#E5E7EB" />
+            <Text variant="titleMedium" style={styles.emptyTitle}>
+              No {activeTab === 'active' ? 'active' : 'past'} bookings
+            </Text>
+            <Text variant="bodyMedium" style={styles.emptyText}>
+              {activeTab === 'active' 
+                ? "You don't have any upcoming appointments"
+                : "Your completed and cancelled bookings will appear here"
+              }
+            </Text>
             {activeTab === 'active' && (
               <Button
                 mode="contained"
                 buttonColor="#3B82F6"
                 onPress={() => router.push('/booking/service-selection')}
                 style={styles.bookButton}
+                icon="plus"
+                contentStyle={styles.bookButtonContent}
               >
                 Book a Service
               </Button>
@@ -185,6 +270,7 @@ export default function BookingsScreen() {
           </View>
         }
       />
+      </View>
     </View>
   );
 }
@@ -192,62 +278,166 @@ export default function BookingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#3B82F6',
+   
   },
   centered: {
     justifyContent: 'center',
     alignItems: 'center',
   },
+
+  innerContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+    borderTopRightRadius: 24,
+    borderTopLeftRadius: 24,
+    marginTop: 44,
+    overflow: 'hidden', 
+  },
+
   header: {
-     backgroundColor: '#3B82F6',
-    paddingTop: 50,
-    paddingHorizontal: 20,
+    backgroundColor: '#ffffffff',
+    paddingTop: 15,
+    paddingHorizontal: 24,
     paddingBottom: 24,
+    
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#070707ff',
     marginBottom: 4,
     fontFamily: 'NunitoSans_700Bold',
   },
+  subtitle: {
+    color: '#153d58ff',
+    fontSize: 16,
+    opacity: 0.9,
+  },
+  tabsContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 5,
+    paddingBottom: 8,
+  },
   tabs: {
-    margin: 16,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+  },
+  tabButton: {
+    borderRadius: 8,
   },
   list: {
     padding: 16,
+    paddingTop: 8,
   },
   card: {
-    elevation: 2,
-    marginBottom: 12,
+    marginBottom: 16,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  cardContent: {
+    padding: 20,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  serviceInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  serviceName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  statusContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    height: 24,
+    marginBottom: 4,
+  },
+  price: {
+    color: '#3B82F6',
+    fontWeight: '700',
+    fontSize: 20,
+  },
+  detailsContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 16,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginBottom: 12,
   },
   detailText: {
-    marginLeft: 8,
-    color: '#666',
+    marginLeft: 12,
+    color: '#6B7280',
+    flex: 1,
+    fontSize: 14,
+  },
+  cardActions: {
+    padding: 16,
+    paddingTop: 8,
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  detailsButton: {
+    borderColor: '#3B82F6',
+    borderRadius: 8,
     flex: 1,
   },
-  price: {
-    marginTop: 12,
+  detailsButtonLabel: {
     color: '#3B82F6',
-    fontWeight: 'bold',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  cancelButton: {
+    borderRadius: 8,
+    flex: 1,
+    borderWidth: 0,
+  },
+  cancelButtonLabel: {
+    fontWeight: '600',
+    fontSize: 14,
   },
   empty: {
-    padding: 40,
+    padding: 48,
     alignItems: 'center',
+    marginTop: 40,
+  },
+  emptyTitle: {
+    color: '#6B7280',
+    marginTop: 16,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  emptyText: {
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 8,
   },
   bookButton: {
-    borderRadius: 8,
-    marginTop: 16,
+    borderRadius: 12,
+    marginTop: 20,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  bookButtonContent: {
+    paddingVertical: 6,
   },
 });

@@ -1,5 +1,8 @@
 import { create } from 'zustand';
-import { Vehicle, Service, Provider, AddOn, Location, BookingPricing } from '@/types';
+import { Vehicle } from '@/lib/api/vehicles';
+import { Service } from '@/lib/api/services';
+import { Provider } from '@/lib/api/providers';
+import { AddOn, Location, BookingPricing } from '@/types';
 
 interface BookingFlowState {
   // Booking flow state

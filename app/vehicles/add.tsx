@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/authStore';
 import { useCreateVehicle } from '@/hooks/useVehicles';
+import { pickImage, uploadImage } from '@/lib/storage';
 
 export default function AddVehicleScreen() {
   const router = useRouter();
@@ -19,9 +20,11 @@ export default function AddVehicleScreen() {
     licensePlate: '',
     vehicleType: 'sedan' as 'sedan' | 'suv' | 'truck' | 'van' | 'sports',
     isDefault: false,
+    imageUrl: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const vehicleTypes = [
     { value: 'sedan', label: 'Sedan', icon: '🚗' },
@@ -30,6 +33,30 @@ export default function AddVehicleScreen() {
     { value: 'van', label: 'Van', icon: '🚐' },
     { value: 'sports', label: 'Sports', icon: '🏎️' },
   ];
+
+  const handleUploadImage = async () => {
+    try {
+      setUploadingImage(true);
+      const image = await pickImage();
+      if (!image) {
+        setUploadingImage(false);
+        return;
+      }
+
+      const result = await uploadImage(
+        image.uri,
+        'vehicles',
+        `vehicle_${user?.id}_${Date.now()}.jpg`
+      );
+
+      setFormData({ ...formData, imageUrl: result.url });
+      Alert.alert('Success', 'Vehicle image uploaded!');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -82,6 +109,34 @@ export default function AddVehicleScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Vehicle Image Upload */}
+        <View style={styles.field}>
+          <Text style={styles.label}>Vehicle Photo (Optional)</Text>
+          <TouchableOpacity
+            style={styles.imageUploadContainer}
+            onPress={handleUploadImage}
+            disabled={uploadingImage}
+          >
+            {uploadingImage ? (
+              <ActivityIndicator size="large" color="#3B82F6" />
+            ) : formData.imageUrl ? (
+              <>
+                <Image source={{ uri: formData.imageUrl }} style={styles.uploadedImage} />
+                <View style={styles.changeImageOverlay}>
+                  <MaterialCommunityIcons name="camera" size={32} color="#FFF" />
+                  <Text style={styles.changeImageText}>Change Photo</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <MaterialCommunityIcons name="camera-plus" size={48} color="#9CA3AF" />
+                <Text style={styles.uploadPlaceholderText}>Tap to upload vehicle photo</Text>
+                <Text style={styles.uploadHintText}>Recommended for better bookings</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
         {/* Make */}
         <View style={styles.field}>
           <Text style={styles.label}>Make *</Text>
@@ -363,5 +418,48 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 40,
+  },
+  imageUploadContainer: {
+    height: 200,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  uploadedImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  changeImageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    opacity: 0,
+  },
+  changeImageText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: 8,
+    fontFamily: 'NunitoSans_700Bold',
+  },
+  uploadPlaceholderText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 12,
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  uploadHintText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 4,
+    fontFamily: 'NunitoSans_400Regular',
   },
 });

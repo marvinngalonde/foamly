@@ -11,6 +11,7 @@ export interface Provider {
   rating: string;
   totalReviews: string;
   verified: boolean;
+  profilePicture?: string;
   gallery?: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -53,6 +54,7 @@ export async function getProviders(): Promise<Provider[]> {
     rating: provider.rating,
     totalReviews: provider.total_reviews,
     verified: provider.verified,
+    profilePicture: provider.profile_picture,
     gallery: provider.gallery,
     createdAt: new Date(provider.created_at),
     updatedAt: new Date(provider.updated_at),
@@ -97,6 +99,7 @@ export async function getProviderById(id: string): Promise<Provider> {
     rating: data.rating,
     totalReviews: data.total_reviews,
     verified: data.verified,
+    profilePicture: data.profile_picture,
     gallery: data.gallery,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
@@ -144,6 +147,7 @@ export async function getProviderByUserId(userId: string): Promise<Provider | nu
     rating: data.rating,
     totalReviews: data.total_reviews,
     verified: data.verified,
+    profilePicture: data.profile_picture,
     gallery: data.gallery,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
@@ -190,6 +194,7 @@ export async function updateProviderProfile(id: string, input: UpdateProviderPro
     rating: data.rating,
     totalReviews: data.total_reviews,
     verified: data.verified,
+    profilePicture: data.profile_picture,
     gallery: data.gallery,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
@@ -226,6 +231,7 @@ export async function searchProviders(serviceArea: string): Promise<Provider[]> 
     rating: provider.rating,
     totalReviews: provider.total_reviews,
     verified: provider.verified,
+    profilePicture: provider.profile_picture,
     gallery: provider.gallery,
     createdAt: new Date(provider.created_at),
     updatedAt: new Date(provider.updated_at),

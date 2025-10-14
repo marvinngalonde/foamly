@@ -54,9 +54,9 @@ export default function HomeScreen() {
         }),
         status: booking.status.charAt(0).toUpperCase() + booking.status.slice(1),
         statusColor: booking.status === 'confirmed' ? '#10B981' :
-                     booking.status === 'pending' ? '#F59E0B' :
-                     booking.status === 'in_progress' ? '#3B82F6' :
-                     booking.status === 'completed' ? '#10B981' : '#DC2626',
+          booking.status === 'pending' ? '#F59E0B' :
+            booking.status === 'in_progress' ? '#3B82F6' :
+              booking.status === 'completed' ? '#10B981' : '#DC2626',
       }));
   }, [bookings]);
 
@@ -64,15 +64,25 @@ export default function HomeScreen() {
   const recommendedProviders = useMemo(() => {
     return providers
       .slice(0, 2)
-      .map(provider => ({
-        id: provider.id,
-        name: provider.businessName,
-        rating: parseFloat(provider.rating),
-        specialty: provider.serviceArea,
-        reviews: parseInt(provider.totalReviews),
-        profilePicture: provider.user?.profilePicture,
-        address: provider.address,
-      }));
+      .map(provider => {
+        const profilePic = provider.profilePicture;
+        console.log('Provider data:', {
+          name: provider.businessName,
+          profilePic: profilePic,
+          profilePicLength: profilePic?.length,
+        });
+        return {
+          id: provider.id,
+          name: provider.businessName,
+          rating: Math.round(parseFloat(provider.rating)),
+          specialty: provider.serviceArea,
+          reviews: parseInt(provider.totalReviews),
+          profilePicture: profilePic && profilePic.trim() !== '' ? profilePic : null,
+          address: provider.address,
+          city: provider.address ? provider.address.split(',')[0] : provider.serviceArea,
+          discount: '30% Off', // Can be made dynamic based on provider data
+        };
+      });
   }, [providers]);
 
   return (
@@ -98,135 +108,168 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      {/* Main CTA Button */}
-      <View style={styles.section}>
-        <TouchableOpacity
-          style={styles.ctaButton}
-          onPress={() => router.push('/booking/service-selection')}
-        >
-          <View style={styles.ctaContent}>
-            <View>
-              <Text style={styles.ctaTitle}>Book a Car Wash</Text>
-              <Text style={styles.ctaSubtitle}>Get your car cleaned today</Text>
+        {/* Main CTA Button */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.ctaButton}
+            onPress={() => router.push('/booking/service-selection')}
+          >
+            <View style={styles.ctaContent}>
+              <View>
+                <Text style={styles.ctaTitle}>Book a Car Wash</Text>
+                <Text style={styles.ctaSubtitle}>Get your car cleaned today</Text>
+              </View>
+              <View style={styles.ctaIcon}>
+                <MaterialCommunityIcons name="arrow-right" size={24} color="#FFF" />
+              </View>
             </View>
-            <View style={styles.ctaIcon}>
-              <MaterialCommunityIcons name="arrow-right" size={24} color="#FFF" />
-            </View>
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      {/* Promo Banner */}
-      <View style={styles.section}>
-        <TouchableOpacity style={styles.promoBanner}>
-          <View style={styles.promoContent}>
-            <MaterialCommunityIcons name="tag" size={32} color="#F59E0B" />
-            <View style={styles.promoText}>
-              <Text style={styles.promoTitle}>Special Offer!</Text>
-              <Text style={styles.promoSubtitle}>Get 20% off your first premium wash</Text>
-            </View>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Featured Services */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Featured Services</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/services')}>
-            <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-          {featuredServices.map((service) => (
-            <TouchableOpacity key={service.id} style={styles.serviceCard}>
-              <View style={styles.serviceImagePlaceholder}>
-                {service.imageUrl ? (
-                  <Image source={{ uri: service.imageUrl }} style={styles.serviceImage} />
-                ) : (
-                  <Text style={styles.serviceEmoji}>🚗</Text>
-                )}
-              </View>
-              <View style={styles.serviceInfo}>
-                <Text style={styles.serviceName}>{service.name}</Text>
-                <View style={styles.serviceDetails}>
-                  <MaterialCommunityIcons name="star" size={14} color="#FFA500" />
-                  <Text style={styles.serviceRating}>{service.rating.toFixed(1)}</Text>
+
+        {/* Promo Banner */}
+        <View style={styles.section}>
+          <View style={styles.promoBannerCard}>
+            <View style={styles.textContainer}>
+              <Text style={styles.title}>Super Saver Week</Text>
+              <Text style={styles.subtitle}>40% Off on Full Car Wash</Text>
+              <TouchableOpacity style={styles.offerButton}>
+                <Text style={styles.offerText}>Grab Offer</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Image
+              source={require("../../assets/wash.png")}
+              style={styles.image}
+              resizeMode="contain"
+            />
+          </View>
+        </View>
+
+
+
+        {/* Featured Services */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Featured Services</Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/services')}>
+              <Text style={styles.seeAll}>See all</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+            {featuredServices.map((service) => (
+              <TouchableOpacity key={service.id} style={styles.serviceCard}>
+                <View style={styles.serviceImagePlaceholder}>
+                  {service.imageUrl ? (
+                    <Image source={{ uri: service.imageUrl }} style={styles.serviceImage} />
+                  ) : (
+                    <Text style={styles.serviceEmoji}>🚗</Text>
+                  )}
                 </View>
-                <Text style={styles.servicePrice}>${service.price.toFixed(2)}</Text>
+                <View style={styles.serviceInfo}>
+                  <Text style={styles.serviceName}>{service.name}</Text>
+                  <View style={styles.serviceDetails}>
+                    <MaterialCommunityIcons name="star" size={14} color="#FFA500" />
+                    <Text style={styles.serviceRating}>{service.rating.toFixed(1)}</Text>
+                  </View>
+                  <Text style={styles.servicePrice}>${service.price.toFixed(2)}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+
+
+        {/* Recommended Providers */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recommended Providers</Text>
+            <TouchableOpacity onPress={() => router.push('/providers')}>
+              <Text style={styles.seeAll}>See all</Text>
+            </TouchableOpacity>
+          </View>
+          {recommendedProviders.map((provider) => (
+            <TouchableOpacity
+              key={provider.id}
+              style={styles.providerCard}
+              onPress={() => router.push(`/provider/${provider.id}/profile` as any)}
+            >
+              {/* Left Image */}
+              {provider.profilePicture ? (
+                <Image
+                  source={{ uri: provider.profilePicture }}
+                  style={styles.providerImage}
+                  onError={(error) => {
+                    console.log('Image load error for', provider.name, ':', error.nativeEvent.error);
+                  }}
+                  defaultSource={require('../../assets/icon.png')}
+                />
+              ) : (
+                <View style={[styles.providerImage, styles.providerImagePlaceholder]}>
+                  <Text style={styles.providerInitial}>
+                    {provider.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+
+              {/* Middle Info */}
+              <View style={styles.providerInfo}>
+                <Text style={styles.providerName}>{provider.name}</Text>
+                <View style={styles.providerLocation}>
+                  <MaterialCommunityIcons name="map-marker" size={14} color="#888" />
+                  <Text style={styles.providerCity} numberOfLines={1}>
+                    {provider.city || "Unknown City"}
+                  </Text>
+                </View>
+
+                <View style={styles.providerRating}>
+                  {[...Array(5)].map((_, i) => (
+                    <MaterialCommunityIcons
+                      key={i}
+                      name="star"
+                      size={14}
+                      color={i < provider.rating ? "#FBBF24" : "#E5E7EB"}
+                    />
+                  ))}
+                  <Text style={styles.reviewCount}>({provider.reviews})</Text>
+                </View>
+              </View>
+
+              {/* Right Side */}
+              <View style={styles.rightSection}>
+                <TouchableOpacity style={styles.likeButton}>
+                  <MaterialCommunityIcons name="thumb-up" size={18} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.discountText}>{provider.discount || "30% Off"}</Text>
+              </View>
+            </TouchableOpacity>
+
+          ))}
+        </View>
+
+        {/* Recent Bookings */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Bookings</Text>
+            <TouchableOpacity onPress={() => router.push('/bookings')}>
+              <Text style={styles.seeAll}>View all</Text>
+            </TouchableOpacity>
+          </View>
+          {recentBookings.map((booking) => (
+            <TouchableOpacity key={booking.id} style={styles.bookingCard}>
+              <View style={styles.bookingIcon}>
+                <MaterialCommunityIcons name="calendar-check" size={24} color="#3B82F6" />
+              </View>
+              <View style={styles.bookingInfo}>
+                <Text style={styles.bookingService}>{booking.service}</Text>
+                <Text style={styles.bookingDate}>{booking.date}</Text>
+              </View>
+              <View style={[styles.statusBadge, { backgroundColor: booking.statusColor }]}>
+                <Text style={styles.statusText}>{booking.status}</Text>
               </View>
             </TouchableOpacity>
           ))}
-        </ScrollView>
-      </View>
-
-      {/* Recent Bookings */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Bookings</Text>
-          <TouchableOpacity onPress={() => router.push('/bookings')}>
-            <Text style={styles.seeAll}>View all</Text>
-          </TouchableOpacity>
         </View>
-        {recentBookings.map((booking) => (
-          <TouchableOpacity key={booking.id} style={styles.bookingCard}>
-            <View style={styles.bookingIcon}>
-              <MaterialCommunityIcons name="calendar-check" size={24} color="#3B82F6" />
-            </View>
-            <View style={styles.bookingInfo}>
-              <Text style={styles.bookingService}>{booking.service}</Text>
-              <Text style={styles.bookingDate}>{booking.date}</Text>
-            </View>
-            <View style={[styles.statusBadge, { backgroundColor: booking.statusColor }]}>
-              <Text style={styles.statusText}>{booking.status}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Recommended Providers */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recommended Providers</Text>
-          <TouchableOpacity onPress={() => router.push('/providers')}>
-            <Text style={styles.seeAll}>See all</Text>
-          </TouchableOpacity>
-        </View>
-        {recommendedProviders.map((provider) => (
-          <TouchableOpacity
-            key={provider.id}
-            style={styles.providerCard}
-            onPress={() => router.push(`/provider/${provider.id}/profile` as any)}
-          >
-            <View style={styles.providerAvatar}>
-              {provider.profilePicture ? (
-                <Image source={{ uri: provider.profilePicture }} style={styles.providerImage} />
-              ) : (
-                <MaterialCommunityIcons name="account" size={32} color="#3B82F6" />
-              )}
-            </View>
-            <View style={styles.providerInfo}>
-              <Text style={styles.providerName}>{provider.name}</Text>
-              <Text style={styles.providerSpecialty}>{provider.specialty}</Text>
-              <View style={styles.providerMeta}>
-                <View style={styles.providerRating}>
-                  <MaterialCommunityIcons name="star" size={14} color="#FFA500" />
-                  <Text style={styles.providerRatingText}>{provider.rating.toFixed(1)}</Text>
-                  <Text style={styles.providerReviews}>({provider.reviews} reviews)</Text>
-                </View>
-                {provider.address && (
-                  <View style={styles.providerDistance}>
-                    <MaterialCommunityIcons name="map-marker" size={14} color="#666" />
-                    <Text style={styles.providerDistanceText} numberOfLines={1}>{provider.address}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={24} color="#CCC" />
-          </TouchableOpacity>
-        ))}
-      </View>
 
         {/* Bottom Padding */}
         <View style={styles.bottomPadding} />
@@ -238,23 +281,62 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#ffffffff',
+  },
+  promoBannerCard: {
+    backgroundColor: "#2563EB", // blue background
+    borderRadius: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+
+
+  },
+  textContainer: {
+    flex: 1,
+    marginRight: 10,
+    marginBottom: 10,
+  },
+  title: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  subtitle: {
+    color: "#E0E7FF",
+    fontSize: 14,
+    marginBottom: 20,
+  },
+  offerButton: {
+    backgroundColor: "#FACC15", // yellow button
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    alignSelf: "flex-start",
+    marginBottom: 5,
+  },
+  offerText: {
+    color: "#000",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  image: {
+    width: 80,
+    height: 80,
   },
   header: {
     backgroundColor: '#FFFFFF',
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 20,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
     borderBottomColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 3,
+
   },
   scrollContent: {
-    marginTop:10,
+    marginTop: 10,
     flex: 1,
   },
   greetingContainer: {
@@ -407,9 +489,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   serviceImagePlaceholder: {
-    height: 100,
+    height: 120,
     backgroundColor: '#F8F9FA',
     justifyContent: 'center',
     alignItems: 'center',
@@ -493,74 +580,80 @@ const styles = StyleSheet.create({
     fontFamily: 'NunitoSans_600SemiBold',
   },
   providerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  providerAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#E0F2FE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    overflow: 'hidden',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 10,
+    marginVertical: 8,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
   providerImage: {
-    width: 56,
-    height: 56,
+    width: 70,
+    height: 70,
+    borderRadius: 12,
+  },
+  providerImagePlaceholder: {
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  providerInitial: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFF',
+    fontFamily: 'NunitoSans_700Bold',
   },
   providerInfo: {
     flex: 1,
+    marginHorizontal: 10,
   },
   providerName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 2,
+    fontFamily: 'NunitoSans_700Bold',
+  },
+  providerLocation: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 4,
-    fontFamily: 'NunitoSans_600SemiBold',
   },
-  providerSpecialty: {
+  providerCity: {
     fontSize: 13,
-    color: '#666',
-    marginBottom: 6,
+    color: "#6B7280",
+    marginLeft: 4,
     fontFamily: 'NunitoSans_400Regular',
-  },
-  providerMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
   },
   providerRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
-  providerRatingText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#333',
-    marginLeft: 4,
-    fontFamily: 'NunitoSans_600SemiBold',
-  },
-  providerReviews: {
+  reviewCount: {
     fontSize: 12,
-    color: '#666',
-    marginLeft: 2,
-    fontFamily: 'NunitoSans_400Regular',
-  },
-  providerDistance: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  providerDistanceText: {
-    fontSize: 13,
-    color: '#666',
+    color: "#6B7280",
     marginLeft: 4,
     fontFamily: 'NunitoSans_400Regular',
+  },
+  rightSection: {
+    alignItems: "center",
+  },
+  likeButton: {
+    backgroundColor: "#2563EB",
+    borderRadius: 20,
+    padding: 6,
+    marginBottom: 6,
+  },
+  discountText: {
+    color: "#2563EB",
+    fontWeight: "600",
+    fontSize: 13,
+    fontFamily: 'NunitoSans_600SemiBold',
   },
   bottomPadding: {
     height: 20,

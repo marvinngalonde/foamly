@@ -1,4 +1,4 @@
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,7 +17,7 @@ export default function VehicleManagementScreen() {
       onSuccess: () => {
         Alert.alert('Success', 'Default vehicle updated');
       },
-      onError: (error) => {
+      onError: (error) => {  
         Alert.alert('Error', (error as Error).message);
       },
     });
@@ -71,12 +71,14 @@ export default function VehicleManagementScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.innerContainer}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Vehicles</Text>
-        <TouchableOpacity style={styles.addButton} onPress={() => router.push('/vehicles/add')}>
-          <MaterialCommunityIcons name="plus" size={24} color="#FFF" />
+        <TouchableOpacity onPress={() => router.push('/(tabs)/')} style={styles.backButton}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>My Vehicles</Text>
+        <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -104,14 +106,14 @@ export default function VehicleManagementScreen() {
             {defaultVehicle && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <MaterialCommunityIcons name="star" size={20} color="#FFA500" />
+                  
                   <Text style={styles.sectionTitle}>Default Vehicle</Text>
                 </View>
 
                 <VehicleCard
                   vehicle={{
                     ...defaultVehicle,
-                    image: getVehicleEmoji(defaultVehicle.vehicleType),
+                    image: defaultVehicle.imageUrl || getVehicleEmoji(defaultVehicle.vehicleType),
                     colorHex: defaultVehicle.color || '#C0C0C0',
                   }}
                   onEdit={() => router.push(`/vehicles/${defaultVehicle.id}/edit`)}
@@ -125,7 +127,7 @@ export default function VehicleManagementScreen() {
             {otherVehicles.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <MaterialCommunityIcons name="car-multiple" size={20} color="#666" />
+              
                   <Text style={styles.sectionTitle}>Other Vehicles</Text>
                 </View>
 
@@ -134,7 +136,7 @@ export default function VehicleManagementScreen() {
                     key={vehicle.id}
                     vehicle={{
                       ...vehicle,
-                      image: getVehicleEmoji(vehicle.vehicleType),
+                      image: vehicle.imageUrl || getVehicleEmoji(vehicle.vehicleType),
                       colorHex: vehicle.color || '#C0C0C0',
                     }}
                     onEdit={() => router.push(`/vehicles/${vehicle.id}/edit`)}
@@ -149,7 +151,7 @@ export default function VehicleManagementScreen() {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
-
+ </View>
       {/* Floating Add Button */}
       {vehicles.length > 0 && (
         <TouchableOpacity
@@ -159,6 +161,7 @@ export default function VehicleManagementScreen() {
           <MaterialCommunityIcons name="plus" size={28} color="#FFF" />
         </TouchableOpacity>
       )}
+     
     </View>
   );
 }
@@ -182,11 +185,17 @@ interface VehicleCardProps {
 }
 
 function VehicleCard({ vehicle, onEdit, onDelete, onSetDefault }: VehicleCardProps) {
+  const isImageUrl = vehicle.image.startsWith('http');
+
   return (
     <View style={styles.vehicleCard}>
       {/* Vehicle Image */}
       <View style={styles.vehicleImageContainer}>
-        <Text style={styles.vehicleEmoji}>{vehicle.image}</Text>
+        {isImageUrl ? (
+          <Image source={{ uri: vehicle.image }} style={styles.vehicleImage} />
+        ) : (
+          <Text style={styles.vehicleEmoji}>{vehicle.image}</Text>
+        )}
         {vehicle.isDefault && (
           <View style={styles.defaultBadge}>
             <MaterialCommunityIcons name="star" size={12} color="#FFA500" />
@@ -206,10 +215,7 @@ function VehicleCard({ vehicle, onEdit, onDelete, onSetDefault }: VehicleCardPro
             <Text style={styles.detailText}>{vehicle.color}</Text>
           </View>
 
-          <View style={styles.detailItem}>
-            <MaterialCommunityIcons name="car" size={14} color="#666" />
-            <Text style={styles.detailText}>{vehicle.vehicleType}</Text>
-          </View>
+       
         </View>
 
         {vehicle.licensePlate && (
@@ -242,23 +248,40 @@ function VehicleCard({ vehicle, onEdit, onDelete, onSetDefault }: VehicleCardPro
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3B82F6',
+  },
+   innerContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+    borderTopRightRadius: 24,
+    borderTopLeftRadius: 24,
+    marginTop: 44,
+    overflow: 'hidden', 
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 10,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    
+  },
+  backButton: {
+    padding: 4,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
     fontFamily: 'NunitoSans_700Bold',
+    flex: 1,
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 40,
   },
   addButton: {
     width: 40,
@@ -291,19 +314,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#F8F9FA',
     borderRadius: 12,
-    padding: 16,
+    paddingRight: 16,
+    paddingLeft: 0,
+    borderWidth: 1,
+    borderColor: '#e5e7eb4f',
     marginBottom: 12,
-    alignItems: 'center',
+    minHeight: 20,
   },
   vehicleImageContainer: {
     width: 80,
-    height: 80,
     backgroundColor: '#FFF',
-    borderRadius: 12,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
     position: 'relative',
+    overflow: 'hidden',
+    alignSelf: 'stretch',
+  },
+  vehicleImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   vehicleEmoji: {
     fontSize: 40,
@@ -318,6 +351,8 @@ const styles = StyleSheet.create({
   },
   vehicleInfo: {
     flex: 1,
+    paddingVertical: 12,
+    justifyContent: 'space-between',
   },
   vehicleName: {
     fontSize: 16,
@@ -349,7 +384,7 @@ const styles = StyleSheet.create({
     fontFamily: 'NunitoSans_400Regular',
   },
   licensePlate: {
-    backgroundColor: '#1E3A8A',
+   
     borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -357,13 +392,14 @@ const styles = StyleSheet.create({
   },
   licensePlateText: {
     fontSize: 12,
-    color: '#FFF',
+    color: '#3B82F6',
     fontFamily: 'Courier New',
     fontWeight: 'bold',
   },
   actionsContainer: {
     flexDirection: 'row',
     gap: 8,
+   
   },
   actionButton: {
     width: 36,

@@ -27,6 +27,7 @@ export const vehicleSchema = z.object({
   color: z.string().optional(),
   licensePlate: z.string().optional(),
   vehicleType: z.enum(['sedan', 'suv', 'truck', 'van', 'sports']),
+  imageUrl: z.string().optional(),
   isDefault: z.boolean().optional(),
 });
 

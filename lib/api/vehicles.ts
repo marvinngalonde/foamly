@@ -10,6 +10,7 @@ export interface Vehicle {
   color?: string;
   licensePlate?: string;
   vehicleType: 'sedan' | 'suv' | 'truck' | 'van' | 'sports';
+  imageUrl?: string;
   isDefault: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -35,6 +36,7 @@ export async function getUserVehicles(userId: string): Promise<Vehicle[]> {
     color: vehicle.color,
     licensePlate: vehicle.license_plate,
     vehicleType: vehicle.vehicle_type,
+    imageUrl: vehicle.image_url,
     isDefault: vehicle.is_default,
     createdAt: new Date(vehicle.created_at),
     updatedAt: new Date(vehicle.updated_at),
@@ -60,6 +62,7 @@ export async function getVehicleById(id: string): Promise<Vehicle> {
     color: data.color,
     licensePlate: data.license_plate,
     vehicleType: data.vehicle_type,
+    imageUrl: data.image_url,
     isDefault: data.is_default,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
@@ -88,6 +91,7 @@ export async function createVehicle(userId: string, input: VehicleInput): Promis
       color: validated.color,
       license_plate: validated.licensePlate,
       vehicle_type: validated.vehicleType,
+      image_url: validated.imageUrl,
       is_default: validated.isDefault ?? false,
     })
     .select()
@@ -104,6 +108,7 @@ export async function createVehicle(userId: string, input: VehicleInput): Promis
     color: data.color,
     licensePlate: data.license_plate,
     vehicleType: data.vehicle_type,
+    imageUrl: data.image_url,
     isDefault: data.is_default,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
@@ -120,6 +125,7 @@ export async function updateVehicle(id: string, userId: string, input: Partial<V
   if (input.color !== undefined) updateData.color = input.color;
   if (input.licensePlate !== undefined) updateData.license_plate = input.licensePlate;
   if (input.vehicleType) updateData.vehicle_type = input.vehicleType;
+  if (input.imageUrl !== undefined) updateData.image_url = input.imageUrl;
   if (input.isDefault !== undefined) {
     updateData.is_default = input.isDefault;
 
@@ -153,6 +159,7 @@ export async function updateVehicle(id: string, userId: string, input: Partial<V
     color: data.color,
     licensePlate: data.license_plate,
     vehicleType: data.vehicle_type,
+    imageUrl: data.image_url,
     isDefault: data.is_default,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
@@ -187,6 +194,7 @@ export async function setDefaultVehicle(id: string, userId: string): Promise<Veh
     color: data.color,
     licensePlate: data.license_plate,
     vehicleType: data.vehicle_type,
+    imageUrl: data.image_url,
     isDefault: data.is_default,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at),
