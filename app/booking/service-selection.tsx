@@ -1,4 +1,5 @@
 import { View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -13,6 +14,7 @@ const CURRENT_STEP = 0; // Service selection is step 1 (index 0)
 
 export default function ServiceSelectionScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const { data: services = [], isLoading } = useServices();
   const { data: vehicles = [] } = useUserVehicles(user?.id || '');
@@ -54,16 +56,17 @@ export default function ServiceSelectionScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header with Back Button */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Select Service</Text>
         <View style={styles.placeholder} />
       </View>
 
+      <View style={styles.innerContainer}>
       {/* Progress Bar */}
       <View style={styles.progressContainer}>
         {STEPS.map((step, index) => (
@@ -98,7 +101,11 @@ export default function ServiceSelectionScreen() {
         ))}
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+      >
         {/* Service Categories */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Choose Your Service</Text>
@@ -158,18 +165,26 @@ export default function ServiceSelectionScreen() {
             })
           )}
         </View>
-
-        <View style={styles.bottomPadding} />
       </ScrollView>
-
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3B82F6',
+  },
+  innerContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+    borderTopRightRadius: 24,
+    borderTopLeftRadius: 24,
+    marginTop: 44,
+    overflow: 'hidden',
   },
   loadingContainer: {
     flex: 1,
@@ -198,10 +213,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 16,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    backgroundColor: 'transparent',
   },
   backButton: {
     padding: 4,
@@ -209,7 +223,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFF',
     fontFamily: 'NunitoSans_700Bold',
   },
   placeholder: {

@@ -2,9 +2,11 @@ import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-nat
 import { Text } from 'react-native-paper';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function BookingDetailsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
 
   // Mock booking data
@@ -79,19 +81,20 @@ export default function BookingDetailsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push('/(tabs)/bookings')} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Booking Details</Text>
         <TouchableOpacity style={styles.shareButton}>
-          <MaterialCommunityIcons name="share-variant" size={24} color="#333" />
+          <MaterialCommunityIcons name="share-variant" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.innerContainer}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
         {/* Status Header */}
         <View style={[styles.statusHeader, { backgroundColor: getStatusColor(booking.status) + '20' }]}>
           <View style={[styles.statusIconContainer, { backgroundColor: getStatusColor(booking.status) }]}>
@@ -241,12 +244,10 @@ export default function BookingDetailsScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </ScrollView>
 
-        <View style={styles.bottomPadding} />
-      </ScrollView>
-
-      {/* Action Buttons */}
-      <View style={styles.footer}>
+        {/* Action Buttons */}
+        <View style={styles.footer}>
         <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
           <MaterialCommunityIcons name="close" size={20} color="#DC2626" />
           <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -261,25 +262,35 @@ export default function BookingDetailsScreen() {
           <MaterialCommunityIcons name="message" size={20} color="#FFF" />
           <Text style={styles.primaryButtonText}>Contact</Text>
         </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3B82F6',
+  },
+  innerContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+    borderTopRightRadius: 24,
+    borderTopLeftRadius: 24,
+    marginTop: 44,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 16,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    backgroundColor: 'transparent',
   },
   backButton: {
     padding: 4,
@@ -287,7 +298,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFF',
     fontFamily: 'NunitoSans_700Bold',
   },
   shareButton: {
@@ -519,9 +530,6 @@ const styles = StyleSheet.create({
     color: '#3B82F6',
     marginLeft: 6,
     fontFamily: 'NunitoSans_600SemiBold',
-  },
-  bottomPadding: {
-    height: 100,
   },
   footer: {
     flexDirection: 'row',

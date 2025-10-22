@@ -3,12 +3,14 @@ import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert
 import { Text } from 'react-native-paper';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBooking } from '@/hooks/useBookings';
 import { useCreateReview } from '@/hooks/useReviews';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function ReviewScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuthStore();
 
@@ -115,17 +117,18 @@ export default function ReviewScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Rate Your Experience</Text>
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.innerContainer}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
         {/* Service Summary */}
         <View style={styles.serviceSummary}>
           <View style={styles.serviceIcon}>
@@ -262,17 +265,26 @@ export default function ReviewScreen() {
             <Text style={styles.submitButtonText}>Submit Review</Text>
           )}
         </TouchableOpacity>
-
-        <View style={styles.bottomPadding} />
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3B82F6',
+  },
+  innerContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+    borderTopRightRadius: 24,
+    borderTopLeftRadius: 24,
+    marginTop: 44,
+    overflow: 'hidden',
   },
   loadingContainer: {
     flex: 1,
@@ -316,10 +328,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 16,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    backgroundColor: 'transparent',
   },
   backButton: {
     width: 40,
@@ -327,7 +338,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFF',
     fontFamily: 'NunitoSans_700Bold',
   },
   placeholder: {
@@ -524,8 +535,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     fontFamily: 'NunitoSans_700Bold',
-  },
-  bottomPadding: {
-    height: 40,
   },
 });

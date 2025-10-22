@@ -1,4 +1,5 @@
 import { View, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, Card, Button, SegmentedButtons, Chip } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
@@ -8,6 +9,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function BookingsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('active');
 
@@ -94,8 +96,7 @@ export default function BookingsScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.innerContainer}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text variant="headlineSmall" style={styles.title}>My Bookings</Text>
         <Text variant="bodyMedium" style={styles.subtitle}>
@@ -103,6 +104,7 @@ export default function BookingsScreen() {
         </Text>
       </View>
 
+      <View style={styles.innerContainer}>
       <View style={styles.tabsContainer}>
         <SegmentedButtons
           value={activeTab}
@@ -133,7 +135,7 @@ export default function BookingsScreen() {
       <FlatList
         data={bookings}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 20 }]}
         onRefresh={refetch}
         refreshing={isLoading}
         showsVerticalScrollIndicator={false}
@@ -271,7 +273,7 @@ export default function BookingsScreen() {
         }
       />
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -298,21 +300,20 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    backgroundColor: '#ffffffff',
+    backgroundColor: 'transparent',
     paddingTop: 15,
     paddingHorizontal: 24,
     paddingBottom: 24,
-    
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#070707ff',
+    color: '#FFF',
     marginBottom: 4,
     fontFamily: 'NunitoSans_700Bold',
   },
   subtitle: {
-    color: '#153d58ff',
+    color: '#FFF',
     fontSize: 16,
     opacity: 0.9,
   },

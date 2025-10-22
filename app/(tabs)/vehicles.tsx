@@ -1,4 +1,5 @@
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,6 +8,7 @@ import { useUserVehicles, useSetDefaultVehicle, useDeleteVehicle } from '@/hooks
 
 export default function VehicleManagementScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const { data: vehicles = [], isLoading, error } = useUserVehicles(user?.id || '');
   const setDefaultMutation = useSetDefaultVehicle(user?.id || '');
@@ -17,7 +19,7 @@ export default function VehicleManagementScreen() {
       onSuccess: () => {
         Alert.alert('Success', 'Default vehicle updated');
       },
-      onError: (error) => {  
+      onError: (error) => {
         Alert.alert('Error', (error as Error).message);
       },
     });
@@ -70,88 +72,91 @@ export default function VehicleManagementScreen() {
   const otherVehicles = vehicles.filter(v => !v.isDefault);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.innerContainer}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push('/(tabs)/')} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Vehicles</Text>
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {vehicles.length === 0 ? (
-          // Empty State
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <MaterialCommunityIcons name="garage" size={80} color="#CCC" />
+      <View style={styles.innerContainer}>
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+        >
+          {vehicles.length === 0 ? (
+            // Empty State
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIcon}>
+                <MaterialCommunityIcons name="garage" size={80} color="#CCC" />
+              </View>
+              <Text style={styles.emptyTitle}>No Vehicles Yet</Text>
+              <Text style={styles.emptySubtitle}>
+                Add your first vehicle to start booking services
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyButton}
+                onPress={() => router.push('/vehicles/add')}
+              >
+                <MaterialCommunityIcons name="plus-circle" size={20} color="#FFF" />
+                <Text style={styles.emptyButtonText}>Add Vehicle</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.emptyTitle}>No Vehicles Yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Add your first vehicle to start booking services
-            </Text>
-            <TouchableOpacity
-              style={styles.emptyButton}
-              onPress={() => router.push('/vehicles/add')}
-            >
-              <MaterialCommunityIcons name="plus-circle" size={20} color="#FFF" />
-              <Text style={styles.emptyButtonText}>Add Vehicle</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            {/* Default Vehicle Section */}
-            {defaultVehicle && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  
-                  <Text style={styles.sectionTitle}>Default Vehicle</Text>
-                </View>
+          ) : (
+            <>
+              {/* Default Vehicle Section */}
+              {defaultVehicle && (
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
 
-                <VehicleCard
-                  vehicle={{
-                    ...defaultVehicle,
-                    image: defaultVehicle.imageUrl || getVehicleEmoji(defaultVehicle.vehicleType),
-                    colorHex: defaultVehicle.color || '#C0C0C0',
-                  }}
-                  onEdit={() => router.push(`/vehicles/${defaultVehicle.id}/edit`)}
-                  onDelete={() => handleDelete(defaultVehicle.id)}
-                  onSetDefault={() => handleSetDefault(defaultVehicle.id)}
-                />
-              </View>
-            )}
+                    <Text style={styles.sectionTitle}>Default Vehicle</Text>
+                  </View>
 
-            {/* Other Vehicles Section */}
-            {otherVehicles.length > 0 && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-              
-                  <Text style={styles.sectionTitle}>Other Vehicles</Text>
-                </View>
-
-                {otherVehicles.map(vehicle => (
                   <VehicleCard
-                    key={vehicle.id}
                     vehicle={{
-                      ...vehicle,
-                      image: vehicle.imageUrl || getVehicleEmoji(vehicle.vehicleType),
-                      colorHex: vehicle.color || '#C0C0C0',
+                      ...defaultVehicle,
+                      image: defaultVehicle.imageUrl || getVehicleEmoji(defaultVehicle.vehicleType),
+                      colorHex: defaultVehicle.color || '#C0C0C0',
                     }}
-                    onEdit={() => router.push(`/vehicles/${vehicle.id}/edit`)}
-                    onDelete={() => handleDelete(vehicle.id)}
-                    onSetDefault={() => handleSetDefault(vehicle.id)}
+                    onEdit={() => router.push(`/vehicles/${defaultVehicle.id}/edit`)}
+                    onDelete={() => handleDelete(defaultVehicle.id)}
+                    onSetDefault={() => handleSetDefault(defaultVehicle.id)}
                   />
-                ))}
-              </View>
-            )}
-          </>
-        )}
+                </View>
+              )}
 
-        <View style={styles.bottomPadding} />
-      </ScrollView>
- </View>
+              {/* Other Vehicles Section */}
+              {otherVehicles.length > 0 && (
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+
+                    <Text style={styles.sectionTitle}>Other Vehicles</Text>
+                  </View>
+
+                  {otherVehicles.map(vehicle => (
+                    <VehicleCard
+                      key={vehicle.id}
+                      vehicle={{
+                        ...vehicle,
+                        image: vehicle.imageUrl || getVehicleEmoji(vehicle.vehicleType),
+                        colorHex: vehicle.color || '#C0C0C0',
+                      }}
+                      onEdit={() => router.push(`/vehicles/${vehicle.id}/edit`)}
+                      onDelete={() => handleDelete(vehicle.id)}
+                      onSetDefault={() => handleSetDefault(vehicle.id)}
+                    />
+                  ))}
+                </View>
+              )}
+            </>
+          )}
+        </ScrollView>
+      </View>
+
       {/* Floating Add Button */}
       {vehicles.length > 0 && (
         <TouchableOpacity
@@ -161,8 +166,7 @@ export default function VehicleManagementScreen() {
           <MaterialCommunityIcons name="plus" size={28} color="#FFF" />
         </TouchableOpacity>
       )}
-     
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -206,7 +210,7 @@ function VehicleCard({ vehicle, onEdit, onDelete, onSetDefault }: VehicleCardPro
       {/* Vehicle Info */}
       <View style={styles.vehicleInfo}>
         <Text style={styles.vehicleName}>
-          {vehicle.year} {vehicle.make} {vehicle.model}
+          {vehicle.make} {vehicle.model}
         </Text>
 
         <View style={styles.vehicleDetails}>
@@ -215,7 +219,7 @@ function VehicleCard({ vehicle, onEdit, onDelete, onSetDefault }: VehicleCardPro
             <Text style={styles.detailText}>{vehicle.color}</Text>
           </View>
 
-       
+
         </View>
 
         {vehicle.licensePlate && (
@@ -250,7 +254,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#3B82F6',
   },
-   innerContainer: {
+  innerContainer: {
     flex: 1,
     backgroundColor: '#FFF',
     borderTopWidth: 1,
@@ -258,7 +262,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     borderTopLeftRadius: 24,
     marginTop: 44,
-    overflow: 'hidden', 
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -267,7 +271,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 16,
-    
+    backgroundColor: 'transparent',
   },
   backButton: {
     padding: 4,
@@ -275,7 +279,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFF',
     fontFamily: 'NunitoSans_700Bold',
     flex: 1,
     textAlign: 'center',
@@ -314,23 +318,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#F8F9FA',
     borderRadius: 12,
-    paddingRight: 16,
-    paddingLeft:0,
- borderWidth: 1,
- borderColor: '#e5e7eb4f',
+    paddingBottom: 0,
+    paddingLeft: 0,
+    borderWidth: 1,
+    borderColor: '#e5e7eb4f',
     marginBottom: 12,
-    alignItems: 'center',
+    height: 100, // Change from minHeight to fixed height
+    alignItems: 'center', // Add this to center content vertically
   },
   vehicleImageContainer: {
-    width: 80,
-    height: 90,
+    width: 100,
     backgroundColor: '#FFF',
-    borderRadius: 12,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
     position: 'relative',
     overflow: 'hidden',
+    height: '100%',
+
   },
   vehicleImage: {
     width: '100%',
@@ -350,6 +357,9 @@ const styles = StyleSheet.create({
   },
   vehicleInfo: {
     flex: 1,
+    paddingVertical: 12,
+    justifyContent: 'center',
+    // Remove any fixed heights here
   },
   vehicleName: {
     fontSize: 16,
@@ -360,7 +370,7 @@ const styles = StyleSheet.create({
   },
   vehicleDetails: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 6,
     marginBottom: 8,
   },
   detailItem: {
@@ -381,7 +391,7 @@ const styles = StyleSheet.create({
     fontFamily: 'NunitoSans_400Regular',
   },
   licensePlate: {
-   
+
     borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -396,11 +406,19 @@ const styles = StyleSheet.create({
   actionsContainer: {
     flexDirection: 'row',
     gap: 8,
-   
+    position: 'relative',
+    alignSelf: 'flex-end',
+    marginTop: 'auto',
+    padding: 8,
+    backgroundColor: '#3B82F6',
+    borderWidth: 1,
+    borderColor: '#3B82F64f',
+    borderTopLeftRadius: 23,
+
   },
   actionButton: {
-    width: 36,
-    height: 36,
+    width: 26,
+    height: 26,
     borderRadius: 18,
     backgroundColor: '#FFF',
     justifyContent: 'center',

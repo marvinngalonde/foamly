@@ -1,5 +1,5 @@
 import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, Card, Button, Searchbar, Chip } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
@@ -11,6 +11,7 @@ type TabType = 'services' | 'providers';
 
 export default function ServicesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('services');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -51,19 +52,19 @@ export default function ServicesScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.container, styles.centered]}>
+      <View style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color="#3B82F6" />
         <Text style={{ marginTop: 16, color: '#666' }}>Loading...</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={[styles.container, styles.centered]}>
+      <View style={[styles.container, styles.centered]}>
         <Text style={{ color: '#DC2626', marginBottom: 16 }}>Error loading data</Text>
         <Text style={{ color: '#666' }}>{(error as Error).message}</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -82,6 +83,7 @@ export default function ServicesScreen() {
         />
       </View>
 
+      <View style={styles.innerContainer}>
       {/* Tabs */}
       <View style={styles.tabs}>
         <TouchableOpacity
@@ -148,7 +150,7 @@ export default function ServicesScreen() {
         <FlatList
           data={filteredServices}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 20 }]}
           renderItem={({ item }) => (
             <Card style={styles.serviceCard}>
               <Card.Content>
@@ -203,7 +205,7 @@ export default function ServicesScreen() {
         <FlatList
           data={filteredProviders}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 20 }]}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.providerCard}
@@ -257,6 +259,7 @@ export default function ServicesScreen() {
           }
         />
       )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -264,22 +267,32 @@ export default function ServicesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3B82F6',
   },
   centered: {
     justifyContent: 'center',
     alignItems: 'center',
   },
+  innerContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+    borderTopRightRadius: 24,
+    borderTopLeftRadius: 24,
+    marginTop: 30,
+    overflow: 'hidden',
+  },
   header: {
     padding: 20,
     paddingTop: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     gap: 12,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFF',
     fontFamily: 'NunitoSans_700Bold',
   },
   searchbar: {

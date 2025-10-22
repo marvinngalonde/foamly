@@ -2,6 +2,7 @@ import { View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Imag
 import { Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { useProviders } from '@/hooks/useProviders';
 import { useBookingStore } from '@/stores/bookingStore';
@@ -9,6 +10,7 @@ import * as Location from 'expo-location';
 
 export default function ProviderSelectionScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('best-match');
   const { setSelectedProvider } = useBookingStore();
@@ -62,18 +64,19 @@ export default function ProviderSelectionScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Select Provider</Text>
         <View style={styles.placeholder} />
       </View>
 
-      {/* Map Container - Static Map Placeholder */}
-      <View style={styles.mapContainer}>
+      <View style={styles.innerContainer}>
+        {/* Map Container - Static Map Placeholder */}
+        <View style={styles.mapContainer}>
         <View style={styles.mapPlaceholder}>
           <MaterialCommunityIcons name="map" size={80} color="#3B82F6" />
           <Text style={styles.mapText}>Provider Locations</Text>
@@ -122,10 +125,10 @@ export default function ProviderSelectionScreen() {
         >
           <MaterialCommunityIcons name="crosshairs-gps" size={24} color="#3B82F6" />
         </TouchableOpacity>
-      </View>
+        </View>
 
-      {/* Filter Bar */}
-      <View style={styles.filterContainer}>
+        {/* Filter Bar */}
+        <View style={styles.filterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {filters.map((filter) => (
             <TouchableOpacity
@@ -152,10 +155,10 @@ export default function ProviderSelectionScreen() {
         <TouchableOpacity style={styles.sortButton}>
           <MaterialCommunityIcons name="sort" size={20} color="#666" />
         </TouchableOpacity>
-      </View>
+        </View>
 
-      {/* Provider List */}
-      <ScrollView style={styles.providerList} showsVerticalScrollIndicator={false}>
+        {/* Provider List */}
+        <ScrollView style={styles.providerList} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
         <View style={styles.listHeader}>
           <Text style={styles.listTitle}>{providers.length} Providers Found</Text>
           <TouchableOpacity>
@@ -244,17 +247,26 @@ export default function ProviderSelectionScreen() {
             </TouchableOpacity>
           );
         })}
-
-        <View style={styles.bottomPadding} />
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3B82F6',
+  },
+  innerContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+    borderTopRightRadius: 24,
+    borderTopLeftRadius: 24,
+    marginTop: 44,
+    overflow: 'hidden',
   },
   loadingContainer: {
     flex: 1,
@@ -273,10 +285,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 16,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    backgroundColor: 'transparent',
   },
   backButton: {
     padding: 4,
@@ -284,7 +295,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFF',
     fontFamily: 'NunitoSans_700Bold',
   },
   placeholder: {
@@ -588,8 +599,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#3B82F6',
     fontFamily: 'NunitoSans_600SemiBold',
-  },
-  bottomPadding: {
-    height: 20,
   },
 });

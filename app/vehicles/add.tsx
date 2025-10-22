@@ -6,11 +6,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/authStore';
 import { useCreateVehicle } from '@/hooks/useVehicles';
 import { pickImage, uploadImage } from '@/lib/storage';
+import { useSafeAreaInsets ,SafeAreaView} from 'react-native-safe-area-context';
 
 export default function AddVehicleScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const createVehicleMutation = useCreateVehicle(user?.id || '');
+  const insets = useSafeAreaInsets();
 
   const [formData, setFormData] = useState({
     make: '',
@@ -98,17 +100,23 @@ export default function AddVehicleScreen() {
   };
 
   return (
+    <SafeAreaView style={styles.safeArea}>
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add Vehicle</Text>
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.innerContainer}>
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+        >
         {/* Vehicle Image Upload */}
         <View style={styles.field}>
           <Text style={styles.label}>Vehicle Photo (Optional)</Text>
@@ -261,17 +269,31 @@ export default function AddVehicleScreen() {
             </>
           )}
         </TouchableOpacity>
-
-        <View style={styles.bottomPadding} />
       </ScrollView>
+      </View>
     </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+   safeArea: {
+    flex: 1,
+    backgroundColor: '#FFF',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3B82F6',
+  },
+  innerContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+    borderTopRightRadius: 24,
+    borderTopLeftRadius: 24,
+    marginTop: 10,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -280,8 +302,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     width: 40,
@@ -289,7 +309,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#ffffffff',
     fontFamily: 'NunitoSans_700Bold',
   },
   placeholder: {
@@ -417,7 +437,7 @@ const styles = StyleSheet.create({
     fontFamily: 'NunitoSans_700Bold',
   },
   bottomPadding: {
-    height: 40,
+    height: 100,
   },
   imageUploadContainer: {
     height: 200,

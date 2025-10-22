@@ -3,9 +3,11 @@ import { View, StyleSheet, TouchableOpacity, Linking, Animated } from 'react-nat
 import { Text } from 'react-native-paper';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TrackingScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
   const [currentStep, setCurrentStep] = useState(2); // 0: On the way, 1: Arrived, 2: In Progress, 3: Completed
   const [eta, setEta] = useState(8); // minutes
@@ -54,7 +56,7 @@ export default function TrackingScreen() {
   ];
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Map Area (Placeholder) */}
       <View style={styles.mapContainer}>
         <View style={styles.mapPlaceholder}>
@@ -83,7 +85,7 @@ export default function TrackingScreen() {
 
         {/* Back Button */}
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#3B82F6" />
         </TouchableOpacity>
 
         {/* Live Indicator */}
@@ -212,14 +214,14 @@ export default function TrackingScreen() {
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3B82F6',
   },
   mapContainer: {
     flex: 1,

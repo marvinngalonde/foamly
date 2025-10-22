@@ -2,11 +2,13 @@ import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-nat
 import { Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useBookingStore } from '@/stores/bookingStore';
 
 export default function DateTimeSelectionScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { selectedProvider, setSelectedDate, setSelectedTime } = useBookingStore();
   const [selectedDateLocal, setSelectedDateLocal] = useState<string | null>(null);
   const [selectedTimeLocal, setSelectedTimeLocal] = useState<string | null>(null);
@@ -52,17 +54,18 @@ export default function DateTimeSelectionScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Select Date & Time</Text>
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.innerContainer}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
         {/* Provider Info */}
         {selectedProvider && (
           <View style={styles.providerInfo}>
@@ -162,12 +165,10 @@ export default function DateTimeSelectionScreen() {
             </Text>
           </View>
         </View>
+        </ScrollView>
 
-        <View style={styles.bottomPadding} />
-      </ScrollView>
-
-      {/* Continue Button */}
-      <View style={styles.footer}>
+        {/* Continue Button */}
+        <View style={styles.footer}>
         <View style={styles.selectionSummary}>
           {selectedDateLocal && (
             <View style={styles.summaryItem}>
@@ -195,25 +196,35 @@ export default function DateTimeSelectionScreen() {
           <Text style={styles.continueButtonText}>Continue</Text>
           <MaterialCommunityIcons name="arrow-right" size={20} color="#FFF" />
         </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3B82F6',
+  },
+  innerContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+    borderTopRightRadius: 24,
+    borderTopLeftRadius: 24,
+    marginTop: 44,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 16,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    backgroundColor: 'transparent',
   },
   backButton: {
     padding: 4,
@@ -221,7 +232,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFF',
     fontFamily: 'NunitoSans_700Bold',
   },
   placeholder: {
@@ -401,9 +412,6 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 18,
     fontFamily: 'NunitoSans_400Regular',
-  },
-  bottomPadding: {
-    height: 20,
   },
   footer: {
     padding: 20,

@@ -2,6 +2,7 @@ import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicato
 import { Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useBookingStore } from '@/stores/bookingStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -9,6 +10,7 @@ import { useCreateBooking } from '@/hooks/useBookings';
 
 export default function BookingConfirmationScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const {
     selectedVehicle,
@@ -109,17 +111,18 @@ export default function BookingConfirmationScreen() {
   const total = calculateTotal();
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Confirm Booking</Text>
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.innerContainer}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
         {/* Booking Summary */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
@@ -239,12 +242,10 @@ export default function BookingConfirmationScreen() {
             </View>
           </View>
         </View>
+        </ScrollView>
 
-        <View style={styles.bottomPadding} />
-      </ScrollView>
-
-      {/* Confirm Button */}
-      <View style={styles.footer}>
+        {/* Confirm Button */}
+        <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.confirmButton, isSubmitting && styles.confirmButtonDisabled]}
           onPress={handleConfirmBooking}
@@ -259,25 +260,35 @@ export default function BookingConfirmationScreen() {
             </>
           )}
         </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3B82F6',
+  },
+  innerContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+    borderTopRightRadius: 24,
+    borderTopLeftRadius: 24,
+    marginTop: 44,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 16,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    backgroundColor: 'transparent',
   },
   backButton: {
     padding: 4,
@@ -285,7 +296,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFF',
     fontFamily: 'NunitoSans_700Bold',
   },
   placeholder: {
@@ -448,9 +459,6 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 18,
     fontFamily: 'NunitoSans_400Regular',
-  },
-  bottomPadding: {
-    height: 20,
   },
   footer: {
     padding: 20,
