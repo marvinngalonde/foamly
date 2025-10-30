@@ -75,11 +75,8 @@ export default function VehicleManagementScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/(tabs)/')} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFF" />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>My Vehicles</Text>
-        <View style={styles.placeholder} />
+        <Text style={styles.headerSubtitle}>Manage your registered vehicles</Text>
       </View>
 
       <View style={styles.innerContainer}>
@@ -261,28 +258,29 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     borderTopRightRadius: 24,
     borderTopLeftRadius: 24,
-    marginTop: 44,
+    marginTop: 14,
     overflow: 'hidden',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 16,
+    paddingHorizontal: 24,
+    paddingTop: 15,
+    paddingBottom: 24,
     backgroundColor: 'transparent',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFF',
+    marginBottom: 4,
+    fontFamily: 'NunitoSans_700Bold',
+  },
+  headerSubtitle: {
+    color: '#FFF',
+    fontSize: 16,
+    opacity: 0.9,
   },
   backButton: {
     padding: 4,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFF',
-    fontFamily: 'NunitoSans_700Bold',
-    flex: 1,
-    textAlign: 'center',
   },
   placeholder: {
     width: 40,

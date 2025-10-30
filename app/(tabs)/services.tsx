@@ -1,6 +1,6 @@
 import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Text, Card, Button, Searchbar, Chip } from 'react-native-paper';
+import { Text, Searchbar, Chip } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -152,47 +152,57 @@ export default function ServicesScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 20 }]}
           renderItem={({ item }) => (
-            <Card style={styles.serviceCard}>
-              <Card.Content>
-                <View style={styles.serviceHeader}>
-                  <Text style={styles.serviceName}>{item.name}</Text>
-                  <Text style={styles.price}>${parseFloat(item.price).toFixed(2)}</Text>
+            <TouchableOpacity
+              style={styles.serviceCard}
+              onPress={() => router.push('/booking/service-selection')}
+              activeOpacity={0.7}
+            >
+              {/* Row 1: Service Icon, Service Name, Book Now Button */}
+              <View style={styles.serviceRow1}>
+                <View style={styles.serviceIconContainer}>
+                  <MaterialCommunityIcons name="car-wash" size={32} color="#3B82F6" />
                 </View>
-                <Text style={styles.description} numberOfLines={2}>
-                  {item.description}
-                </Text>
-                <View style={styles.serviceMeta}>
-                  <View style={styles.metaItem}>
-                    <MaterialCommunityIcons name="clock-outline" size={14} color="#666" />
-                    <Text style={styles.metaText}>{item.duration}</Text>
-                  </View>
+
+                <View style={styles.serviceDetails}>
+                  <Text style={styles.serviceName}>{item.name}</Text>
+                  <Text style={styles.description} numberOfLines={1}>
+                    {item.description}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.bookNowButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    router.push('/booking/service-selection');
+                  }}
+                >
+                  <MaterialCommunityIcons name="calendar-plus" size={14} color="#FFF" />
+                  <Text style={styles.bookNowText}>Book</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Row 2: Price, Provider */}
+              <View style={styles.serviceRow2}>
+                <View style={styles.serviceLeftSection}>
+                  <Text style={styles.price}>${parseFloat(item.price).toFixed(2)}</Text>
+
                   {item.provider && (
-                    <View style={styles.metaItem}>
-                      <MaterialCommunityIcons name="store" size={14} color="#3B82F6" />
-                      <Text style={styles.providerName}>{item.provider.businessName}</Text>
+                    <View style={styles.providerContainer}>
+                      <MaterialCommunityIcons name="store" size={16} color="#6B7280" />
+                      <Text style={styles.providerText} numberOfLines={1}>
+                        {item.provider.businessName}
+                      </Text>
                     </View>
                   )}
                 </View>
-              </Card.Content>
-              <Card.Actions style={styles.cardActions}>
-                <Button
-                  mode="outlined"
-                  textColor="#3B82F6"
-                  style={styles.learnMoreButton}
-                  onPress={() => router.push(`/services/${item.id}`)}
-                >
-                  Details
-                </Button>
-                <Button
-                  mode="contained"
-                  buttonColor="#3B82F6"
-                  style={styles.bookButton}
-                  onPress={() => router.push('/booking/service-selection')}
-                >
-                  Book Now
-                </Button>
-              </Card.Actions>
-            </Card>
+
+                <View style={styles.durationContainer}>
+                  <MaterialCommunityIcons name="clock-outline" size={14} color="#6B7280" />
+                  <Text style={styles.durationText}>{item.duration}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
           )}
           ListEmptyComponent={
             <View style={styles.empty}>
@@ -355,35 +365,114 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   serviceCard: {
-    elevation: 2,
     backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  serviceRow1: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  serviceIconContainer: {
+    width: 60,
+    height: 60,
     borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  serviceDetails: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  serviceName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+    fontFamily: 'NunitoSans_700Bold',
+  },
+  description: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: 'NunitoSans_400Regular',
+  },
+  durationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  durationText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  serviceRow2: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  serviceLeftSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  price: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#3B82F6',
+    fontFamily: 'NunitoSans_700Bold',
+  },
+  providerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  providerText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '600',
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  bookNowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  bookNowText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFF',
+    fontFamily: 'NunitoSans_700Bold',
   },
   serviceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
-  },
-  serviceName: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: '#333',
-    flex: 1,
-    fontFamily: 'NunitoSans_700Bold',
-  },
-  price: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#3B82F6',
-    fontFamily: 'NunitoSans_700Bold',
-  },
-  description: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-    marginBottom: 12,
-    fontFamily: 'NunitoSans_400Regular',
   },
   serviceMeta: {
     flexDirection: 'row',

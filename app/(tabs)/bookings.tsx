@@ -1,6 +1,6 @@
-import { View, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Text, Card, Button, SegmentedButtons, Chip } from 'react-native-paper';
+import { Text, Button, Chip } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
 import { useAuthStore } from '@/stores/authStore';
@@ -106,30 +106,24 @@ export default function BookingsScreen() {
 
       <View style={styles.innerContainer}>
       <View style={styles.tabsContainer}>
-        <SegmentedButtons
-          value={activeTab}
-          onValueChange={setActiveTab}
-          buttons={[
-            {
-              value: 'active',
-              label: `Active (${activeBookings.length})`,
-              style: styles.tabButton,
-            },
-            {
-              value: 'past',
-              label: `History (${pastBookings.length})`,
-              style: styles.tabButton,
-            },
-          ]}
-          style={styles.tabs}
-          theme={{ 
-            colors: { 
-              secondaryContainer: '#3B82F6', 
-              onSecondaryContainer: '#FFFFFF',
-              primary: '#3B82F6'
-            } 
-          }}
-        />
+        <Chip
+          selected={activeTab === 'active'}
+          onPress={() => setActiveTab('active')}
+          style={[styles.chip, activeTab === 'active' && styles.chipSelected]}
+          textStyle={[styles.chipText, activeTab === 'active' && styles.chipTextSelected]}
+          selectedColor={activeTab === 'active' ? '#FFFFFF' : '#6B7280'}
+        >
+          Active ({activeBookings.length})
+        </Chip>
+        <Chip
+          selected={activeTab === 'past'}
+          onPress={() => setActiveTab('past')}
+          style={[styles.chip, activeTab === 'past' && styles.chipSelected]}
+          textStyle={[styles.chipText, activeTab === 'past' && styles.chipTextSelected]}
+          selectedColor={activeTab === 'past' ? '#FFFFFF' : '#6B7280'}
+        >
+          History ({pastBookings.length})
+        </Chip>
       </View>
 
       <FlatList
@@ -140,110 +134,67 @@ export default function BookingsScreen() {
         refreshing={isLoading}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <Card style={styles.card} elevation={3}>
-            <Card.Content style={styles.cardContent}>
-              <View style={styles.cardHeader}>
-                <View style={styles.serviceInfo}>
-                  <Text variant="titleMedium" style={styles.serviceName}>
-                    {item.service?.name || 'Service'}
-                  </Text>
-                  <View style={styles.statusContainer}>
-                    <MaterialCommunityIcons 
-                      name={getStatusIcon(item.status)} 
-                      size={14} 
-                      color={getStatusColor(item.status)} 
-                    />
-                    <Chip
-                      compact
-                      mode="flat"
-                      textStyle={{ 
-                        color: getStatusColor(item.status), 
-                        fontWeight: '600',
-                        fontSize: 12,
-                        marginLeft: 4
-                      }}
-                      style={{ 
-                        backgroundColor: `${getStatusColor(item.status)}15`,
-                        height: 28,
-                        marginLeft: 6
-                      }}
-                    >
-                      {formatStatusText(item.status)}
-                    </Chip>
-                  </View>
-                </View>
-                <Text variant="titleLarge" style={styles.price}>
-                  ${parseFloat(item.totalPrice).toFixed(2)}
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => router.push(`/booking/${item.id}/details`)}
+            activeOpacity={0.7}
+          >
+            {/* Row 1: Service Image, Provider Name, Service Name, Date */}
+            <View style={styles.row1}>
+              <View style={styles.serviceImageContainer}>
+                <MaterialCommunityIcons name="car-wash" size={32} color="#3B82F6" />
+              </View>
+
+              <View style={styles.serviceDetails}>
+                <Text style={styles.providerName}>
+                  {item.provider?.businessName || 'Provider'}
+                </Text>
+                <Text style={styles.serviceName}>
+                  {item.service?.name || 'Service'}
                 </Text>
               </View>
 
-              <View style={styles.detailsContainer}>
-                <View style={styles.detailRow}>
-                  <MaterialCommunityIcons name="calendar" size={18} color="#6B7280" />
-                  <Text variant="bodyMedium" style={styles.detailText}>
-                    {new Date(item.scheduledDate).toLocaleDateString('en-US', {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit'
-                    })}
-                  </Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <MaterialCommunityIcons name="map-marker" size={18} color="#6B7280" />
-                  <Text variant="bodySmall" style={styles.detailText}>
-                    {item.location}
-                  </Text>
-                </View>
-
-                {item.provider && (
-                  <View style={styles.detailRow}>
-                    <MaterialCommunityIcons name="store" size={18} color="#6B7280" />
-                    <Text variant="bodySmall" style={styles.detailText}>
-                      {item.provider.businessName}
-                    </Text>
-                  </View>
-                )}
-
-                {item.vehicle && (
-                  <View style={styles.detailRow}>
-                    <MaterialCommunityIcons name="car" size={18} color="#6B7280" />
-                    <Text variant="bodySmall" style={styles.detailText}>
-                      {item.vehicle.year} {item.vehicle.make} {item.vehicle.model}
-                    </Text>
-                  </View>
-                )}
+              <View style={styles.dateContainer}>
+                <MaterialCommunityIcons name="calendar" size={16} color="#6B7280" />
+                <Text style={styles.dateText}>
+                  {new Date(item.scheduledDate).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric'
+                  })}
+                </Text>
               </View>
-            </Card.Content>
-            
-            <Card.Actions style={styles.cardActions}>
-              <Button
-                mode="outlined"
-                style={styles.detailsButton}
-                labelStyle={styles.detailsButtonLabel}
+            </View>
+
+            {/* Row 2: Price, Car, Status Button */}
+            <View style={styles.row2}>
+              <View style={styles.leftSection}>
+                <Text style={styles.priceValue}>
+                  ${parseFloat(item.totalPrice).toFixed(2)}
+                </Text>
+
+                <View style={styles.vehicleContainer}>
+                  <MaterialCommunityIcons name="car" size={16} color="#6B7280" />
+                  <Text style={styles.vehicleText} numberOfLines={1}>
+                    {item.vehicle ? `${item.vehicle.make} ${item.vehicle.model}` : 'Vehicle'}
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.statusButton, { backgroundColor: getStatusColor(item.status) }]}
                 onPress={() => router.push(`/booking/${item.id}/details`)}
-                icon="information"
               >
-                Details
-              </Button>
-              {(item.status === 'confirmed' || item.status === 'pending') && (
-                <Button 
-                  mode="contained"
-                  style={styles.cancelButton}
-                  labelStyle={styles.cancelButtonLabel}
-                  onPress={() => handleCancel(item.id)}
-                  icon="close"
-                  buttonColor="#FEF2F2"
-                  textColor="#DC2626"
-                >
-                  Cancel
-                </Button>
-              )}
-            </Card.Actions>
-          </Card>
+                <MaterialCommunityIcons
+                  name={getStatusIcon(item.status)}
+                  size={14}
+                  color="#FFF"
+                />
+                <Text style={styles.statusButtonText}>
+                  {formatStatusText(item.status)}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -295,7 +246,7 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     borderTopRightRadius: 24,
     borderTopLeftRadius: 24,
-    marginTop: 44,
+    marginTop: 14,
     overflow: 'hidden', 
   },
 
@@ -318,16 +269,29 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   tabsContainer: {
+    flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingTop: 5,
-    paddingBottom: 8,
+    paddingTop: 16,
+    paddingBottom: 12,
+    gap: 12,
   },
-  tabs: {
-    borderRadius: 12,
+  chip: {
+    flex: 1,
     backgroundColor: '#F1F5F9',
+    borderRadius: 20,
   },
-  tabButton: {
-    borderRadius: 8,
+  chipSelected: {
+    backgroundColor: '#3B82F6',
+  },
+  chipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  chipTextSelected: {
+    color: '#FFFFFF',
+    fontFamily: 'NunitoSans_700Bold',
   },
   list: {
     padding: 16,
@@ -340,77 +304,118 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#F1F5F9',
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  cardContent: {
-    padding: 20,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  serviceInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  serviceName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 24,
-    marginBottom: 4,
-  },
-  price: {
-    color: '#3B82F6',
-    fontWeight: '700',
-    fontSize: 20,
-  },
-  detailsContainer: {
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    paddingTop: 16,
-  },
-  detailRow: {
+  row1: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
-  detailText: {
-    marginLeft: 12,
-    color: '#6B7280',
+  serviceImageContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  serviceImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  serviceDetails: {
     flex: 1,
-    fontSize: 14,
+    justifyContent: 'center',
   },
-  cardActions: {
-    padding: 16,
-    paddingTop: 8,
-    justifyContent: 'flex-end',
+  providerName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 4,
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  serviceName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: 'NunitoSans_700Bold',
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  dateText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  row2: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  leftSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
     gap: 12,
   },
-  detailsButton: {
-    borderColor: '#3B82F6',
-    borderRadius: 8,
+  priceContainer: {
     flex: 1,
   },
-  detailsButtonLabel: {
+  priceLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginBottom: 2,
+    fontFamily: 'NunitoSans_400Regular',
+  },
+  priceValue: {
+    fontSize: 18,
+    fontWeight: '700',
     color: '#3B82F6',
-    fontWeight: '600',
-    fontSize: 14,
+    fontFamily: 'NunitoSans_700Bold',
   },
-  cancelButton: {
-    borderRadius: 8,
-    flex: 1,
-    borderWidth: 0,
+  vehicleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  cancelButtonLabel: {
+  vehicleText: {
+    fontSize: 13,
+    color: '#6B7280',
     fontWeight: '600',
-    fontSize: 14,
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  statusButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFF',
+    fontFamily: 'NunitoSans_700Bold',
   },
   empty: {
     padding: 48,
