@@ -7,6 +7,10 @@ import { useState } from 'react';
 import { useBookingStore } from '@/stores/bookingStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useCreateBooking } from '@/hooks/useBookings';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+
+const STEPS = ['Service', 'Vehicle', 'Location', 'Provider', 'Time', 'Confirm'];
+const CURRENT_STEP = 5; // Confirm is step 6 (index 5)
 
 export default function BookingConfirmationScreen() {
   const router = useRouter();
@@ -24,8 +28,10 @@ export default function BookingConfirmationScreen() {
 
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
 
   const createBookingMutation = useCreateBooking(user?.id || '');
+  const { data: paymentMethods = [] } = usePaymentMethods(user?.id || '');
 
   const handleConfirmBooking = async () => {
     // Debug: Log what we have
@@ -70,8 +76,12 @@ export default function BookingConfirmationScreen() {
         serviceId: selectedService.id,
         vehicleId: selectedVehicle.id,
         scheduledDate: scheduledDate.toISOString(),
+        scheduledTime: `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`,
         location: selectedLocation?.address || 'Customer Location',
+        latitude: selectedLocation?.coordinates?.latitude,
+        longitude: selectedLocation?.coordinates?.longitude,
         totalPrice: totalPrice,
+        estimatedDuration: 60, // Default to 60 minutes
         notes: notes || undefined,
       });
 
@@ -122,6 +132,52 @@ export default function BookingConfirmationScreen() {
       </View>
 
       <View style={styles.innerContainer}>
+        {/* Progress Bar */}
+        <View style={styles.progressContainer}>
+          {STEPS.map((step, index) => (
+            <View key={step} style={styles.stepContainer}>
+              <View style={styles.stepWrapper}>
+                <View
+                  style={[
+                    styles.stepCircle,
+                    index <= CURRENT_STEP && styles.stepCircleActive,
+                    index < CURRENT_STEP && styles.stepCircleCompleted,
+                  ]}
+                >
+                  {index < CURRENT_STEP ? (
+                    <MaterialCommunityIcons name="check" size={16} color="#FFF" />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.stepNumber,
+                        index <= CURRENT_STEP && styles.stepNumberActive,
+                      ]}
+                    >
+                      {index + 1}
+                    </Text>
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.stepLabel,
+                    index <= CURRENT_STEP && styles.stepLabelActive,
+                  ]}
+                >
+                  {step}
+                </Text>
+              </View>
+              {index < STEPS.length - 1 && (
+                <View
+                  style={[
+                    styles.stepLine,
+                    index < CURRENT_STEP && styles.stepLineActive,
+                  ]}
+                />
+              )}
+            </View>
+          ))}
+        </View>
+
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
         {/* Booking Summary */}
         <View style={styles.summaryCard}>
@@ -133,57 +189,171 @@ export default function BookingConfirmationScreen() {
           {/* Service */}
           {selectedService && (
             <View style={styles.summaryRow}>
-              <View style={styles.summaryLabel}>
-                <MaterialCommunityIcons name="spray" size={18} color="#666" />
-                <Text style={styles.summaryLabelText}>Service</Text>
+              <View style={styles.summaryContent}>
+                <View style={styles.summaryLabel}>
+                  <MaterialCommunityIcons name="spray" size={18} color="#666" />
+                  <Text style={styles.summaryLabelText}>Service</Text>
+                </View>
+                <Text style={styles.summaryValue}>{selectedService.name}</Text>
               </View>
-              <Text style={styles.summaryValue}>{selectedService.name}</Text>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => router.push('/booking/service-selection')}
+              >
+                <MaterialCommunityIcons name="pencil" size={16} color="#3B82F6" />
+              </TouchableOpacity>
             </View>
           )}
 
           {/* Vehicle */}
           {selectedVehicle && (
             <View style={styles.summaryRow}>
-              <View style={styles.summaryLabel}>
-                <MaterialCommunityIcons name="car" size={18} color="#666" />
-                <Text style={styles.summaryLabelText}>Vehicle</Text>
+              <View style={styles.summaryContent}>
+                <View style={styles.summaryLabel}>
+                  <MaterialCommunityIcons name="car" size={18} color="#666" />
+                  <Text style={styles.summaryLabelText}>Vehicle</Text>
+                </View>
+                <Text style={styles.summaryValue}>
+                  {selectedVehicle.year} {selectedVehicle.make} {selectedVehicle.model}
+                </Text>
               </View>
-              <Text style={styles.summaryValue}>
-                {selectedVehicle.year} {selectedVehicle.make} {selectedVehicle.model}
-              </Text>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => router.push('/booking/vehicle-selection')}
+              >
+                <MaterialCommunityIcons name="pencil" size={16} color="#3B82F6" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Location */}
+          {selectedLocation && (
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryContent}>
+                <View style={styles.summaryLabel}>
+                  <MaterialCommunityIcons name="map-marker" size={18} color="#666" />
+                  <Text style={styles.summaryLabelText}>Location</Text>
+                </View>
+                <Text style={styles.summaryValue} numberOfLines={2}>
+                  {selectedLocation.address}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => router.push('/booking/location-selection')}
+              >
+                <MaterialCommunityIcons name="pencil" size={16} color="#3B82F6" />
+              </TouchableOpacity>
             </View>
           )}
 
           {/* Provider */}
           {selectedProvider && (
             <View style={styles.summaryRow}>
-              <View style={styles.summaryLabel}>
-                <MaterialCommunityIcons name="store" size={18} color="#666" />
-                <Text style={styles.summaryLabelText}>Provider</Text>
+              <View style={styles.summaryContent}>
+                <View style={styles.summaryLabel}>
+                  <MaterialCommunityIcons name="store" size={18} color="#666" />
+                  <Text style={styles.summaryLabelText}>Provider</Text>
+                </View>
+                <Text style={styles.summaryValue}>{selectedProvider.businessName}</Text>
               </View>
-              <Text style={styles.summaryValue}>{selectedProvider.businessName}</Text>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => router.push('/booking/provider-selection')}
+              >
+                <MaterialCommunityIcons name="pencil" size={16} color="#3B82F6" />
+              </TouchableOpacity>
             </View>
           )}
 
-          {/* Date */}
-          {selectedDate && (
+          {/* Date & Time */}
+          {(selectedDate || selectedTime) && (
             <View style={styles.summaryRow}>
-              <View style={styles.summaryLabel}>
-                <MaterialCommunityIcons name="calendar" size={18} color="#666" />
-                <Text style={styles.summaryLabelText}>Date</Text>
+              <View style={styles.summaryContent}>
+                <View style={styles.summaryLabel}>
+                  <MaterialCommunityIcons name="calendar-clock" size={18} color="#666" />
+                  <Text style={styles.summaryLabelText}>Date & Time</Text>
+                </View>
+                <View>
+                  {selectedDate && (
+                    <Text style={styles.summaryValue}>{formatDate(selectedDate)}</Text>
+                  )}
+                  {selectedTime && (
+                    <Text style={styles.summaryValue}>{selectedTime}</Text>
+                  )}
+                </View>
               </View>
-              <Text style={styles.summaryValue}>{formatDate(selectedDate)}</Text>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => router.push('/booking/datetime-selection')}
+              >
+                <MaterialCommunityIcons name="pencil" size={16} color="#3B82F6" />
+              </TouchableOpacity>
             </View>
           )}
+        </View>
 
-          {/* Time */}
-          {selectedTime && (
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryLabel}>
-                <MaterialCommunityIcons name="clock-outline" size={18} color="#666" />
-                <Text style={styles.summaryLabelText}>Time</Text>
-              </View>
-              <Text style={styles.summaryValue}>{selectedTime}</Text>
+        {/* Payment Method Selection */}
+        <View style={styles.paymentCard}>
+          <View style={styles.paymentHeader}>
+            <MaterialCommunityIcons name="credit-card" size={24} color="#3B82F6" />
+            <Text style={styles.paymentTitle}>Payment Method</Text>
+          </View>
+
+          {paymentMethods.length === 0 ? (
+            <TouchableOpacity
+              style={styles.addPaymentButton}
+              onPress={() => router.push('/profile/payment-methods')}
+            >
+              <MaterialCommunityIcons name="plus-circle" size={20} color="#3B82F6" />
+              <Text style={styles.addPaymentText}>Add Payment Method</Text>
+            </TouchableOpacity>
+          ) : (
+            <View>
+              {paymentMethods.map((method) => (
+                <TouchableOpacity
+                  key={method.id}
+                  style={[
+                    styles.paymentMethodItem,
+                    selectedPaymentMethod === method.id && styles.paymentMethodItemSelected,
+                  ]}
+                  onPress={() => setSelectedPaymentMethod(method.id)}
+                >
+                  <View style={styles.paymentMethodIcon}>
+                    <MaterialCommunityIcons
+                      name={
+                        method.brand === 'Visa'
+                          ? 'credit-card'
+                          : method.brand === 'Mastercard'
+                          ? 'credit-card'
+                          : 'credit-card'
+                      }
+                      size={24}
+                      color={selectedPaymentMethod === method.id ? '#3B82F6' : '#666'}
+                    />
+                  </View>
+                  <View style={styles.paymentMethodInfo}>
+                    <Text style={styles.paymentMethodBrand}>{method.brand}</Text>
+                    <Text style={styles.paymentMethodNumber}>**** **** **** {method.last4}</Text>
+                    {method.isDefault && (
+                      <View style={styles.defaultBadge}>
+                        <Text style={styles.defaultBadgeText}>DEFAULT</Text>
+                      </View>
+                    )}
+                  </View>
+                  {selectedPaymentMethod === method.id && (
+                    <MaterialCommunityIcons name="check-circle" size={24} color="#3B82F6" />
+                  )}
+                </TouchableOpacity>
+              ))}
+
+              <TouchableOpacity
+                style={styles.addAnotherCard}
+                onPress={() => router.push('/profile/payment-methods')}
+              >
+                <MaterialCommunityIcons name="plus" size={16} color="#3B82F6" />
+                <Text style={styles.addAnotherCardText}>Add Another Card</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -302,6 +472,64 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 32,
   },
+  progressContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 8,
+    paddingVertical: 16,
+    backgroundColor: '#F8F9FA',
+  },
+  stepContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stepWrapper: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  stepCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  stepCircleActive: {
+    backgroundColor: '#3B82F6',
+  },
+  stepCircleCompleted: {
+    backgroundColor: '#10B981',
+  },
+  stepNumber: {
+    fontSize: 11,
+    color: '#999',
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  stepNumberActive: {
+    color: '#FFF',
+  },
+  stepLabel: {
+    fontSize: 8,
+    color: '#999',
+    fontFamily: 'NunitoSans_400Regular',
+  },
+  stepLabelActive: {
+    color: '#333',
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  stepLine: {
+    height: 2,
+    backgroundColor: '#E5E7EB',
+    position: 'absolute',
+    left: '50%',
+    right: '-50%',
+    top: 13,
+  },
+  stepLineActive: {
+    backgroundColor: '#10B981',
+  },
   content: {
     flex: 1,
   },
@@ -325,7 +553,13 @@ const styles = StyleSheet.create({
     fontFamily: 'NunitoSans_700Bold',
   },
   summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     marginBottom: 16,
+  },
+  summaryContent: {
+    flex: 1,
   },
   summaryLabel: {
     flexDirection: 'row',
@@ -343,6 +577,111 @@ const styles = StyleSheet.create({
     color: '#333',
     paddingLeft: 26,
     fontFamily: 'NunitoSans_400Regular',
+  },
+  editButton: {
+    padding: 8,
+    marginLeft: 8,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+  },
+  paymentCard: {
+    backgroundColor: '#F8F9FA',
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 20,
+    borderRadius: 12,
+  },
+  paymentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  paymentTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    fontFamily: 'NunitoSans_700Bold',
+  },
+  addPaymentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    borderStyle: 'dashed',
+    gap: 8,
+  },
+  addPaymentText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3B82F6',
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  paymentMethodItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  paymentMethodItemSelected: {
+    borderColor: '#3B82F6',
+    backgroundColor: '#EFF6FF',
+  },
+  paymentMethodIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  paymentMethodInfo: {
+    flex: 1,
+  },
+  paymentMethodBrand: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+    fontFamily: 'NunitoSans_700Bold',
+  },
+  paymentMethodNumber: {
+    fontSize: 13,
+    color: '#666',
+    fontFamily: 'NunitoSans_400Regular',
+  },
+  defaultBadge: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  defaultBadgeText: {
+    fontSize: 10,
+    color: '#FFF',
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  addAnotherCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    gap: 6,
+  },
+  addAnotherCardText: {
+    fontSize: 13,
+    color: '#3B82F6',
+    fontFamily: 'NunitoSans_600SemiBold',
   },
   pricingCard: {
     backgroundColor: '#F0F9FF',

@@ -1,11 +1,11 @@
-import { View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useProviderByUserId } from '@/hooks/useProviders';
-import { useProviderBookings } from '@/hooks/useBookings';
+import { useProviderBookings, useUpdateBookingStatus } from '@/hooks/useBookings';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -18,11 +18,67 @@ export default function ProviderScheduleScreen() {
 
   const { data: provider, isLoading: providerLoading } = useProviderByUserId(user?.id || '');
   const { data: bookings = [], isLoading: bookingsLoading, refetch } = useProviderBookings(provider?.id || '');
+  const updateBookingStatusMutation = useUpdateBookingStatus();
 
   const onRefresh = async () => {
     setRefreshing(true);
     await refetch();
     setRefreshing(false);
+  };
+
+  const handleAcceptBooking = (bookingId: string, customerName: string) => {
+    Alert.alert(
+      'Accept Booking',
+      `Confirm this booking for ${customerName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Accept',
+          onPress: () => {
+            updateBookingStatusMutation.mutate(
+              { id: bookingId, status: 'confirmed' },
+              {
+                onSuccess: () => {
+                  Alert.alert('Success', 'Booking accepted!');
+                  refetch();
+                },
+                onError: (error) => {
+                  Alert.alert('Error', (error as Error).message || 'Failed to accept booking');
+                },
+              }
+            );
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeclineBooking = (bookingId: string, customerName: string) => {
+    Alert.alert(
+      'Decline Booking',
+      `Are you sure you want to decline this booking from ${customerName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Decline',
+          style: 'destructive',
+          onPress: () => {
+            updateBookingStatusMutation.mutate(
+              { id: bookingId, status: 'cancelled' },
+              {
+                onSuccess: () => {
+                  Alert.alert('Declined', 'Booking has been declined');
+                  refetch();
+                },
+                onError: (error) => {
+                  Alert.alert('Error', (error as Error).message || 'Failed to decline booking');
+                },
+              }
+            );
+          },
+        },
+      ]
+    );
   };
 
   // Filter bookings by selected date
@@ -128,9 +184,14 @@ export default function ProviderScheduleScreen() {
           <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Schedule</Text>
-        <TouchableOpacity onPress={() => setSelectedDate(new Date())}>
-          <Text style={styles.todayButton}>Today</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => setSelectedDate(new Date())} style={styles.todayButtonContainer}>
+            <Text style={styles.todayButton}>Today</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/provider/availability')} style={styles.settingsButton}>
+            <MaterialCommunityIcons name="cog" size={24} color="#3B82F6" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* View Mode Toggle */}
@@ -284,10 +345,22 @@ export default function ProviderScheduleScreen() {
                   <Text style={styles.priceText}>${parseFloat(booking.totalPrice).toFixed(2)}</Text>
                   {booking.status === 'pending' && (
                     <View style={styles.quickActions}>
-                      <TouchableOpacity style={styles.acceptButton}>
+                      <TouchableOpacity
+                        style={styles.acceptButton}
+                        onPress={() => handleAcceptBooking(
+                          booking.id,
+                          `${booking.customer?.firstName} ${booking.customer?.lastName}`
+                        )}
+                      >
                         <Text style={styles.acceptButtonText}>Accept</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.declineButton}>
+                      <TouchableOpacity
+                        style={styles.declineButton}
+                        onPress={() => handleDeclineBooking(
+                          booking.id,
+                          `${booking.customer?.firstName} ${booking.customer?.lastName}`
+                        )}
+                      >
                         <MaterialCommunityIcons name="close" size={16} color="#EF4444" />
                       </TouchableOpacity>
                     </View>
@@ -353,10 +426,26 @@ const styles = StyleSheet.create({
     color: '#333',
     fontFamily: 'NunitoSans_700Bold',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  todayButtonContainer: {
+    paddingVertical: 4,
+  },
   todayButton: {
     fontSize: 14,
     color: '#3B82F6',
     fontFamily: 'NunitoSans_600SemiBold',
+  },
+  settingsButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   viewModeContainer: {
     flexDirection: 'row',

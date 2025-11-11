@@ -9,7 +9,7 @@ import { useBookingStore } from '@/stores/bookingStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useUserVehicles } from '@/hooks/useVehicles';
 
-const STEPS = ['Service', 'Provider', 'Time', 'Confirm'];
+const STEPS = ['Service', 'Vehicle', 'Location', 'Provider', 'Time', 'Confirm'];
 const CURRENT_STEP = 0; // Service selection is step 1 (index 0)
 
 export default function ServiceSelectionScreen() {
@@ -231,8 +231,8 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingVertical: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 16,
     backgroundColor: '#F8F9FA',
   },
   stepContainer: {
@@ -245,9 +245,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stepCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
   },
   stepNumber: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#999',
     fontFamily: 'NunitoSans_600SemiBold',
   },
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   stepLabel: {
-    fontSize: 10,
+    fontSize: 8,
     color: '#999',
     fontFamily: 'NunitoSans_400Regular',
   },
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: '50%',
     right: '-50%',
-    top: 15,
+    top: 13,
   },
   stepLineActive: {
     backgroundColor: '#10B981',

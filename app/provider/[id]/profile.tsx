@@ -5,6 +5,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useProvider } from '@/hooks/useProviders';
 import { useProviderServices } from '@/hooks/useServices';
+import { useBookingStore } from '@/stores/bookingStore';
 import { useState, useEffect } from 'react';
 import * as Location from 'expo-location';
 
@@ -19,6 +20,7 @@ export default function ProviderProfileScreen() {
 
   const { data: provider, isLoading: providerLoading } = useProvider(id || '');
   const { data: services = [], isLoading: servicesLoading } = useProviderServices(id || '');
+  const { setSelectedProvider } = useBookingStore();
 
   // Geocode provider address to get coordinates
   useEffect(() => {
@@ -311,7 +313,12 @@ export default function ProviderProfileScreen() {
             mode="contained"
             style={styles.bookButton}
             labelStyle={styles.bookButtonLabel}
-            onPress={() => router.push('/booking/service-selection')}
+            onPress={() => {
+              if (provider) {
+                setSelectedProvider(provider);
+                router.push('/booking/service-selection');
+              }
+            }}
             buttonColor="#3B82F6"
           >
             Book Now

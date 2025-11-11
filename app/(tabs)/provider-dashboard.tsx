@@ -8,6 +8,7 @@ import { useProviderByUserId } from '@/hooks/useProviders';
 import { useProviderBookings } from '@/hooks/useBookings';
 import { useProviderReviews } from '@/hooks/useReviews';
 import { useProviderServices } from '@/hooks/useServices';
+import { useUnreadCount } from '@/hooks/useNotifications';
 
 export default function ProviderDashboardScreen() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function ProviderDashboardScreen() {
   const { data: bookings = [], isLoading: bookingsLoading, refetch: refetchBookings } = useProviderBookings(provider?.id || '');
   const { data: reviews = [], isLoading: reviewsLoading } = useProviderReviews(provider?.id || '');
   const { data: services = [], isLoading: servicesLoading } = useProviderServices(provider?.id || '');
+  const { data: unreadCount = 0 } = useUnreadCount(user?.id || '');
 
   // Calculate metrics from real data
   const metrics = useMemo(() => {
@@ -191,10 +193,10 @@ export default function ProviderDashboardScreen() {
             onPress={() => router.push('/notifications')}
           >
             <MaterialCommunityIcons name="bell-outline" size={24} color="#FFF" />
-            {bookings.filter(b => b.status === 'pending').length > 0 && (
+            {unreadCount > 0 && (
               <View style={styles.notificationBadge}>
                 <Text style={styles.notificationText}>
-                  {bookings.filter(b => b.status === 'pending').length}
+                  {unreadCount}
                 </Text>
               </View>
             )}

@@ -58,8 +58,12 @@ export const createBookingSchema = z.object({
   serviceId: z.string().uuid('Invalid service ID'),
   vehicleId: z.string().uuid('Invalid vehicle ID'),
   scheduledDate: z.string().datetime('Invalid date format'),
+  scheduledTime: z.string().optional(),
   location: z.string().min(5, 'Location must be at least 5 characters'),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
   totalPrice: z.number().positive('Total price must be positive'),
+  estimatedDuration: z.number().optional(),
   notes: z.string().optional(),
 });
 

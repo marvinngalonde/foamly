@@ -120,11 +120,14 @@ export default function ProviderServicesScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Services</Text>
           <Text style={styles.headerSubtitle}>{services.length} total • {activeServices} active</Text>
         </View>
-       
+        <View style={styles.placeholder} />
       </View>
 
       {/* Stats Cards */}
@@ -351,9 +354,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#FFF',
     paddingTop: 50,
-   
     paddingHorizontal: 20,
     paddingBottom: 20,
     flexDirection: 'row',
@@ -362,15 +364,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
+  backButton: {
+    padding: 4,
+  },
+  headerContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  placeholder: {
+    width: 32,
+  },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#ffffffff',
+    color: '#333',
     fontFamily: 'NunitoSans_700Bold',
   },
   headerSubtitle: {
     fontSize: 13,
-    color: '#eeeeeeff',
+    color: '#666',
     marginTop: 4,
     fontFamily: 'NunitoSans_400Regular',
   },

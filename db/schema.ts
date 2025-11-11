@@ -42,7 +42,14 @@ export const providerProfiles = pgTable('provider_profiles', {
   businessName: varchar('business_name', { length: 255 }).notNull(),
   bio: text('bio'),
   serviceArea: text('service_area').notNull(),
+  address: text('address'),
+  latitude: decimal('latitude', { precision: 10, scale: 8 }),
+  longitude: decimal('longitude', { precision: 11, scale: 8 }),
+  serviceRadius: decimal('service_radius', { precision: 10, scale: 0 }).default('5000'),
+  phoneNumber: varchar('phone_number', { length: 20 }),
   profilePicture: text('profile_picture'),
+  gallery: text('gallery').array(), // Array of image URLs
+  isActive: boolean('is_active').default(true),
   rating: decimal('rating', { precision: 3, scale: 2 }).default('0.00'),
   totalReviews: decimal('total_reviews', { precision: 10, scale: 0 }).default('0'),
   verified: boolean('verified').default(false),
@@ -89,9 +96,17 @@ export const bookings = pgTable('bookings', {
   serviceId: uuid('service_id').notNull().references(() => services.id),
   vehicleId: uuid('vehicle_id').notNull().references(() => vehicles.id),
   scheduledDate: timestamp('scheduled_date').notNull(),
-  location: text('location').notNull(),
+  scheduledTime: varchar('scheduled_time', { length: 10 }),
+  location: text('location').notNull(), // JSON: {address, latitude, longitude}
+  latitude: decimal('latitude', { precision: 10, scale: 8 }),
+  longitude: decimal('longitude', { precision: 11, scale: 8 }),
   status: bookingStatusEnum('status').notNull().default('pending'),
   totalPrice: decimal('total_price', { precision: 10, scale: 2 }).notNull(),
+  estimatedDuration: decimal('estimated_duration', { precision: 5, scale: 0 }).default('60'),
+  actualStartTime: timestamp('actual_start_time'),
+  actualEndTime: timestamp('actual_end_time'),
+  beforeImages: text('before_images').array(), // Array of image URLs
+  afterImages: text('after_images').array(), // Array of image URLs
   notes: text('notes'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -117,6 +132,45 @@ export const payments = pgTable('payments', {
   status: paymentStatusEnum('status').notNull().default('pending'),
   paymentMethod: varchar('payment_method', { length: 50 }).notNull(),
   stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Payment Methods table
+export const paymentMethods = pgTable('payment_methods', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id),
+  type: varchar('type', { length: 50 }).notNull(), // 'Visa', 'Mastercard', etc.
+  last4: varchar('last4', { length: 4 }).notNull(),
+  brand: varchar('brand', { length: 50 }).notNull(),
+  expiryMonth: varchar('expiry_month', { length: 2 }).notNull(),
+  expiryYear: varchar('expiry_year', { length: 4 }).notNull(),
+  isDefault: boolean('is_default').default(false),
+  stripePaymentMethodId: varchar('stripe_payment_method_id', { length: 255 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Notification Preferences table
+export const notificationPreferences = pgTable('notification_preferences', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id).unique(),
+  pushNotifications: boolean('push_notifications').default(true),
+  emailNotifications: boolean('email_notifications').default(true),
+  smsNotifications: boolean('sms_notifications').default(false),
+  bookingReminders: boolean('booking_reminders').default(true),
+  promotions: boolean('promotions').default(false),
+  serviceUpdates: boolean('service_updates').default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// User Settings table (for privacy and security settings)
+export const userSettings = pgTable('user_settings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id).unique(),
+  biometricEnabled: boolean('biometric_enabled').default(false),
+  twoFactorEnabled: boolean('two_factor_enabled').default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

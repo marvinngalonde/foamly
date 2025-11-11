@@ -6,6 +6,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useState } from 'react';
 import { useBookingStore } from '@/stores/bookingStore';
 
+const STEPS = ['Service', 'Vehicle', 'Location', 'Provider', 'Time', 'Confirm'];
+const CURRENT_STEP = 4; // Time selection is step 5 (index 4)
+
 export default function DateTimeSelectionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -65,6 +68,52 @@ export default function DateTimeSelectionScreen() {
       </View>
 
       <View style={styles.innerContainer}>
+        {/* Progress Bar */}
+        <View style={styles.progressContainer}>
+          {STEPS.map((step, index) => (
+            <View key={step} style={styles.stepContainer}>
+              <View style={styles.stepWrapper}>
+                <View
+                  style={[
+                    styles.stepCircle,
+                    index <= CURRENT_STEP && styles.stepCircleActive,
+                    index < CURRENT_STEP && styles.stepCircleCompleted,
+                  ]}
+                >
+                  {index < CURRENT_STEP ? (
+                    <MaterialCommunityIcons name="check" size={16} color="#FFF" />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.stepNumber,
+                        index <= CURRENT_STEP && styles.stepNumberActive,
+                      ]}
+                    >
+                      {index + 1}
+                    </Text>
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.stepLabel,
+                    index <= CURRENT_STEP && styles.stepLabelActive,
+                  ]}
+                >
+                  {step}
+                </Text>
+              </View>
+              {index < STEPS.length - 1 && (
+                <View
+                  style={[
+                    styles.stepLine,
+                    index < CURRENT_STEP && styles.stepLineActive,
+                  ]}
+                />
+              )}
+            </View>
+          ))}
+        </View>
+
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
         {/* Provider Info */}
         {selectedProvider && (
@@ -237,6 +286,64 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 32,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 8,
+    paddingVertical: 16,
+    backgroundColor: '#F8F9FA',
+  },
+  stepContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stepWrapper: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  stepCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  stepCircleActive: {
+    backgroundColor: '#3B82F6',
+  },
+  stepCircleCompleted: {
+    backgroundColor: '#10B981',
+  },
+  stepNumber: {
+    fontSize: 11,
+    color: '#999',
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  stepNumberActive: {
+    color: '#FFF',
+  },
+  stepLabel: {
+    fontSize: 8,
+    color: '#999',
+    fontFamily: 'NunitoSans_400Regular',
+  },
+  stepLabelActive: {
+    color: '#333',
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  stepLine: {
+    height: 2,
+    backgroundColor: '#E5E7EB',
+    position: 'absolute',
+    left: '50%',
+    right: '-50%',
+    top: 13,
+  },
+  stepLineActive: {
+    backgroundColor: '#10B981',
   },
   content: {
     flex: 1,

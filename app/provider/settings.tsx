@@ -1,16 +1,20 @@
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch, ActivityIndicator } from 'react-native';
 import { Text, Button, TextInput } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useProviderByUserId } from '@/hooks/useProviders';
+import { useProviderSettings, useUpdateProviderSettings } from '@/hooks/useProviderSettings';
+import { supabase } from '@/lib/supabase';
 
 export default function ProviderSettingsScreen() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
 
   const { data: provider } = useProviderByUserId(user?.id || '');
+  const { data: settings, isLoading } = useProviderSettings(provider?.id || '');
+  const updateSettingsMutation = useUpdateProviderSettings();
 
   // Notification settings
   const [newBookingNotifications, setNewBookingNotifications] = useState(true);
@@ -23,14 +27,54 @@ export default function ProviderSettingsScreen() {
   const [openingTime, setOpeningTime] = useState('08:00');
   const [closingTime, setClosingTime] = useState('18:00');
 
-  const handleSaveNotificationSettings = () => {
-    // TODO: Implement save notification preferences to database
-    Alert.alert('Success', 'Notification settings updated');
+  // Load settings from database
+  useEffect(() => {
+    if (settings) {
+      setNewBookingNotifications(settings.newBookingNotifications);
+      setCancelNotifications(settings.cancelNotifications);
+      setMessageNotifications(settings.messageNotifications);
+      setReminderNotifications(settings.reminderNotifications);
+      setIsOpen(settings.isOpen);
+      setOpeningTime(settings.openingTime);
+      setClosingTime(settings.closingTime);
+    }
+  }, [settings]);
+
+  const handleSaveNotificationSettings = async () => {
+    if (!provider?.id) return;
+
+    try {
+      await updateSettingsMutation.mutateAsync({
+        providerId: provider.id,
+        input: {
+          newBookingNotifications,
+          cancelNotifications,
+          messageNotifications,
+          reminderNotifications,
+        },
+      });
+      Alert.alert('Success', 'Notification settings updated');
+    } catch (error) {
+      Alert.alert('Error', (error as Error).message || 'Failed to update settings');
+    }
   };
 
-  const handleSaveBusinessHours = () => {
-    // TODO: Implement save business hours to database
-    Alert.alert('Success', 'Business hours updated');
+  const handleSaveBusinessHours = async () => {
+    if (!provider?.id) return;
+
+    try {
+      await updateSettingsMutation.mutateAsync({
+        providerId: provider.id,
+        input: {
+          isOpen,
+          openingTime,
+          closingTime,
+        },
+      });
+      Alert.alert('Success', 'Business hours updated');
+    } catch (error) {
+      Alert.alert('Error', (error as Error).message || 'Failed to update business hours');
+    }
   };
 
   const handleDeactivateAccount = () => {
@@ -42,9 +86,29 @@ export default function ProviderSettingsScreen() {
         {
           text: 'Deactivate',
           style: 'destructive',
-          onPress: () => {
-            // TODO: Implement account deactivation
-            Alert.alert('Coming Soon', 'Account deactivation will be available soon');
+          onPress: async () => {
+            if (!provider?.id) return;
+
+            try {
+              const { error } = await supabase
+                .from('provider_profiles')
+                .update({ is_active: false })
+                .eq('id', provider.id);
+
+              if (error) throw error;
+
+              Alert.alert('Success', 'Account deactivated. Contact support to reactivate.', [
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    logout();
+                    router.replace('/auth/login');
+                  },
+                },
+              ]);
+            } catch (error) {
+              Alert.alert('Error', (error as Error).message || 'Failed to deactivate account');
+            }
           },
         },
       ]
@@ -65,11 +129,20 @@ export default function ProviderSettingsScreen() {
     ]);
   };
 
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#3B82F6" />
+        <Text style={styles.loadingText}>Loading settings...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/(tabs)/provider-dashboard')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Settings</Text>
@@ -132,6 +205,8 @@ export default function ProviderSettingsScreen() {
               buttonColor="#3B82F6"
               onPress={handleSaveBusinessHours}
               style={styles.saveButton}
+              loading={updateSettingsMutation.isPending}
+              disabled={updateSettingsMutation.isPending}
             >
               Save Business Hours
             </Button>
@@ -206,6 +281,8 @@ export default function ProviderSettingsScreen() {
               buttonColor="#3B82F6"
               onPress={handleSaveNotificationSettings}
               style={styles.saveButton}
+              loading={updateSettingsMutation.isPending}
+              disabled={updateSettingsMutation.isPending}
             >
               Save Notification Settings
             </Button>
@@ -218,7 +295,7 @@ export default function ProviderSettingsScreen() {
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => router.push('/provider/profile')}
+            onPress={() => router.push('/provider/service-area/edit')}
           >
             <View style={styles.actionIcon}>
               <MaterialCommunityIcons name="map-marker-radius" size={24} color="#3B82F6" />
@@ -226,7 +303,7 @@ export default function ProviderSettingsScreen() {
             <View style={styles.actionInfo}>
               <Text style={styles.actionLabel}>Edit Service Area</Text>
               <Text style={styles.actionDescription}>
-                {provider?.serviceArea || 'Update your service area'}
+                {provider?.serviceArea || 'Update your service area and coverage'}
               </Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={24} color="#CCC" />
@@ -239,7 +316,7 @@ export default function ProviderSettingsScreen() {
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => router.push('/provider/profile')}
+            onPress={() => router.push('/(tabs)/provider-profile')}
           >
             <View style={styles.actionIcon}>
               <MaterialCommunityIcons name="account-edit" size={24} color="#3B82F6" />
@@ -359,6 +436,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#666',
+    fontFamily: 'NunitoSans_400Regular',
   },
   header: {
     flexDirection: 'row',

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { CreateBookingInput, UpdateBookingStatusInput, createBookingSchema } from '@/lib/validations';
+import { notifyProviderNewBooking, notifyCustomerBookingConfirmed, notifyBookingStatusChange } from './notifications';
 
 export interface Booking {
   id: string;
@@ -231,7 +232,7 @@ export async function getBookingById(id: string): Promise<Booking> {
 export async function createBooking(customerId: string, input: CreateBookingInput): Promise<Booking> {
   const validated = createBookingSchema.parse(input);
 
-  const { data, error } = await supabase
+  const { data, error} = await supabase
     .from('bookings')
     .insert({
       customer_id: customerId,
@@ -239,8 +240,12 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
       service_id: validated.serviceId,
       vehicle_id: validated.vehicleId,
       scheduled_date: validated.scheduledDate,
+      scheduled_time: validated.scheduledTime,
       location: validated.location,
+      latitude: validated.latitude,
+      longitude: validated.longitude,
       total_price: validated.totalPrice.toString(),
+      estimated_duration: validated.estimatedDuration || 60,
       notes: validated.notes,
       status: 'pending',
     })
@@ -248,6 +253,24 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
     .single();
 
   if (error) throw error;
+
+  // Send notification to provider
+  try {
+    // Get customer name
+    const { data: customer } = await supabase
+      .from('users')
+      .select('first_name, last_name')
+      .eq('id', customerId)
+      .single();
+
+    if (customer) {
+      const customerName = `${customer.first_name} ${customer.last_name}`;
+      await notifyProviderNewBooking(validated.providerId, data.id, customerName);
+    }
+  } catch (notifError) {
+    // Don't fail the booking if notification fails
+    console.error('Failed to send notification:', notifError);
+  }
 
   return {
     id: data.id,
@@ -278,6 +301,37 @@ export async function updateBookingStatus(id: string, status: UpdateBookingStatu
     .single();
 
   if (error) throw error;
+
+  // Send notification to customer about status change
+  try {
+    // Get provider and customer info
+    const { data: provider } = await supabase
+      .from('provider_profiles')
+      .select('business_name')
+      .eq('id', data.provider_id)
+      .single();
+
+    if (provider) {
+      if (status === 'confirmed') {
+        await notifyCustomerBookingConfirmed(
+          data.customer_id,
+          data.id,
+          provider.business_name,
+          data.scheduled_date
+        );
+      } else {
+        await notifyBookingStatusChange(
+          data.customer_id,
+          data.id,
+          status,
+          provider.business_name
+        );
+      }
+    }
+  } catch (notifError) {
+    // Don't fail the status update if notification fails
+    console.error('Failed to send notification:', notifError);
+  }
 
   return {
     id: data.id,

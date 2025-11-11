@@ -3,9 +3,11 @@ import {
   getProviders,
   getProviderById,
   getProviderByUserId,
+  createProvider,
   updateProviderProfile,
   searchProviders,
   Provider,
+  CreateProviderInput,
 } from '@/lib/api/providers';
 import { UpdateProviderProfileInput } from '@/lib/validations';
 
@@ -52,6 +54,19 @@ export function useSearchProviders(serviceArea: string) {
     queryKey: providerKeys.search(serviceArea),
     queryFn: () => searchProviders(serviceArea),
     enabled: !!serviceArea && serviceArea.length >= 2,
+  });
+}
+
+// Create provider mutation
+export function useCreateProvider() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: CreateProviderInput) => createProvider(input),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: providerKeys.byUser(data.userId) });
+      queryClient.invalidateQueries({ queryKey: providerKeys.lists() });
+    },
   });
 }
 

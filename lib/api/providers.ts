@@ -1,6 +1,42 @@
 import { supabase } from '@/lib/supabase';
 import { UpdateProviderProfileInput } from '@/lib/validations';
 
+// Helper function to map database provider to Provider interface
+function mapProviderData(provider: any): Provider {
+  return {
+    id: provider.id,
+    userId: provider.user_id,
+    businessName: provider.business_name,
+    bio: provider.bio,
+    serviceArea: provider.service_area,
+    address: provider.address,
+    latitude: provider.latitude ? parseFloat(provider.latitude) : undefined,
+    longitude: provider.longitude ? parseFloat(provider.longitude) : undefined,
+    serviceRadius: provider.service_radius ? parseInt(provider.service_radius) : 5000,
+    phoneNumber: provider.phone_number,
+    isActive: provider.is_active ?? true,
+    rating: provider.rating,
+    totalReviews: provider.total_reviews,
+    verified: provider.verified,
+    profilePicture: provider.profile_picture,
+    gallery: provider.gallery || [],
+    location: provider.latitude && provider.longitude ? {
+      latitude: parseFloat(provider.latitude),
+      longitude: parseFloat(provider.longitude),
+    } : undefined,
+    createdAt: new Date(provider.created_at),
+    updatedAt: new Date(provider.updated_at),
+    user: provider.users ? {
+      id: provider.users.id,
+      email: provider.users.email,
+      firstName: provider.users.first_name,
+      lastName: provider.users.last_name,
+      phoneNumber: provider.users.phone_number,
+      profilePicture: provider.users.profile_picture,
+    } : undefined,
+  };
+}
+
 export interface Provider {
   id: string;
   userId: string;
@@ -8,11 +44,20 @@ export interface Provider {
   bio?: string;
   serviceArea: string;
   address?: string;
+  latitude?: number;
+  longitude?: number;
+  serviceRadius?: number;
+  phoneNumber?: string;
+  isActive: boolean;
   rating: string;
   totalReviews: string;
   verified: boolean;
   profilePicture?: string;
   gallery?: string[];
+  location?: {
+    latitude: number;
+    longitude: number;
+  };
   createdAt: Date;
   updatedAt: Date;
   user?: {
@@ -44,29 +89,7 @@ export async function getProviders(): Promise<Provider[]> {
 
   if (error) throw error;
 
-  return data.map((provider: any) => ({
-    id: provider.id,
-    userId: provider.user_id,
-    businessName: provider.business_name,
-    bio: provider.bio,
-    serviceArea: provider.service_area,
-    address: provider.address,
-    rating: provider.rating,
-    totalReviews: provider.total_reviews,
-    verified: provider.verified,
-    profilePicture: provider.profile_picture,
-    gallery: provider.gallery,
-    createdAt: new Date(provider.created_at),
-    updatedAt: new Date(provider.updated_at),
-    user: provider.users ? {
-      id: provider.users.id,
-      email: provider.users.email,
-      firstName: provider.users.first_name,
-      lastName: provider.users.last_name,
-      phoneNumber: provider.users.phone_number,
-      profilePicture: provider.users.profile_picture,
-    } : undefined,
-  }));
+  return data.map(mapProviderData);
 }
 
 // Get provider by ID
@@ -89,29 +112,7 @@ export async function getProviderById(id: string): Promise<Provider> {
 
   if (error) throw error;
 
-  return {
-    id: data.id,
-    userId: data.user_id,
-    businessName: data.business_name,
-    bio: data.bio,
-    serviceArea: data.service_area,
-    address: data.address,
-    rating: data.rating,
-    totalReviews: data.total_reviews,
-    verified: data.verified,
-    profilePicture: data.profile_picture,
-    gallery: data.gallery,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at),
-    user: data.users ? {
-      id: data.users.id,
-      email: data.users.email,
-      firstName: data.users.first_name,
-      lastName: data.users.last_name,
-      phoneNumber: data.users.phone_number,
-      profilePicture: data.users.profile_picture,
-    } : undefined,
-  };
+  return mapProviderData(data);
 }
 
 // Get provider by user ID
@@ -137,29 +138,7 @@ export async function getProviderByUserId(userId: string): Promise<Provider | nu
     throw error;
   }
 
-  return {
-    id: data.id,
-    userId: data.user_id,
-    businessName: data.business_name,
-    bio: data.bio,
-    serviceArea: data.service_area,
-    address: data.address,
-    rating: data.rating,
-    totalReviews: data.total_reviews,
-    verified: data.verified,
-    profilePicture: data.profile_picture,
-    gallery: data.gallery,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at),
-    user: data.users ? {
-      id: data.users.id,
-      email: data.users.email,
-      firstName: data.users.first_name,
-      lastName: data.users.last_name,
-      phoneNumber: data.users.phone_number,
-      profilePicture: data.users.profile_picture,
-    } : undefined,
-  };
+  return mapProviderData(data);
 }
 
 // Update provider profile
@@ -201,6 +180,63 @@ export async function updateProviderProfile(id: string, input: UpdateProviderPro
   };
 }
 
+// Create provider profile
+export interface CreateProviderInput {
+  userId: string;
+  businessName: string;
+  bio: string;
+  serviceArea: string;
+  address: string;
+  latitude?: number;
+  longitude?: number;
+  serviceRadius?: number;
+  profilePicture?: string;
+  phoneNumber?: string;
+  isActive?: boolean;
+  verified?: boolean;
+}
+
+export async function createProvider(input: CreateProviderInput): Promise<Provider> {
+  const { data, error } = await supabase
+    .from('provider_profiles')
+    .insert({
+      user_id: input.userId,
+      business_name: input.businessName,
+      bio: input.bio,
+      service_area: input.serviceArea,
+      address: input.address,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      service_radius: input.serviceRadius || 5000,
+      profile_picture: input.profilePicture,
+      phone_number: input.phoneNumber,
+      is_active: input.isActive ?? true,
+      verified: input.verified ?? false,
+      rating: '0',
+      total_reviews: '0',
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    userId: data.user_id,
+    businessName: data.business_name,
+    bio: data.bio,
+    serviceArea: data.service_area,
+    address: data.address,
+    rating: data.rating,
+    totalReviews: data.total_reviews,
+    verified: data.verified,
+    profilePicture: data.profile_picture,
+    gallery: data.gallery || [],
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at),
+  };
+}
+
 // Search providers by service area
 export async function searchProviders(serviceArea: string): Promise<Provider[]> {
   const { data, error } = await supabase
@@ -221,27 +257,5 @@ export async function searchProviders(serviceArea: string): Promise<Provider[]> 
 
   if (error) throw error;
 
-  return data.map((provider: any) => ({
-    id: provider.id,
-    userId: provider.user_id,
-    businessName: provider.business_name,
-    bio: provider.bio,
-    serviceArea: provider.service_area,
-    address: provider.address,
-    rating: provider.rating,
-    totalReviews: provider.total_reviews,
-    verified: provider.verified,
-    profilePicture: provider.profile_picture,
-    gallery: provider.gallery,
-    createdAt: new Date(provider.created_at),
-    updatedAt: new Date(provider.updated_at),
-    user: provider.users ? {
-      id: provider.users.id,
-      email: provider.users.email,
-      firstName: provider.users.first_name,
-      lastName: provider.users.last_name,
-      phoneNumber: provider.users.phone_number,
-      profilePicture: provider.users.profile_picture,
-    } : undefined,
-  }));
+  return data.map(mapProviderData);
 }

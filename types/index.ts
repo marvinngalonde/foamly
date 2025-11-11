@@ -225,6 +225,44 @@ export interface PaymentMethodCard {
   stripePaymentMethodId: string;
 }
 
+// Notification Preferences Types
+export interface NotificationPreferences {
+  id: string;
+  userId: string;
+  pushNotifications: boolean;
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  bookingReminders: boolean;
+  promotions: boolean;
+  serviceUpdates: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateNotificationPreferencesInput {
+  pushNotifications?: boolean;
+  emailNotifications?: boolean;
+  smsNotifications?: boolean;
+  bookingReminders?: boolean;
+  promotions?: boolean;
+  serviceUpdates?: boolean;
+}
+
+// User Settings Types (Privacy & Security)
+export interface UserSettings {
+  id: string;
+  userId: string;
+  biometricEnabled: boolean;
+  twoFactorEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateUserSettingsInput {
+  biometricEnabled?: boolean;
+  twoFactorEnabled?: boolean;
+}
+
 // Review & Rating Types
 export interface Review {
   id: string;

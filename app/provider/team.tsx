@@ -5,68 +5,219 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useProviderByUserId } from '@/hooks/useProviders';
-
-interface TeamMember {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  status: 'active' | 'invited' | 'inactive';
-  joinedDate?: Date;
-}
+import {
+  useTeamMembers,
+  useInviteTeamMember,
+  useUpdateTeamMember,
+  useDeleteTeamMember,
+  useResendInvitation,
+} from '@/hooks/useTeams';
 
 export default function ProviderTeamScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('team_member');
+  const [inviteFirstName, setInviteFirstName] = useState('');
+  const [inviteLastName, setInviteLastName] = useState('');
+  const [inviteRole, setInviteRole] = useState<'team_member' | 'manager'>('team_member');
 
-  const { data: provider, isLoading } = useProviderByUserId(user?.id || '');
+  const { data: provider, isLoading: providerLoading } = useProviderByUserId(user?.id || '');
+  const { data: teamMembers = [], isLoading: teamLoading, refetch } = useTeamMembers(provider?.id || '');
+  const inviteTeamMemberMutation = useInviteTeamMember();
+  const updateTeamMemberMutation = useUpdateTeamMember();
+  const deleteTeamMemberMutation = useDeleteTeamMember();
+  const resendInvitationMutation = useResendInvitation();
 
-  // TODO: This would be fetched from a team_members table in the database
-  // For now, showing the structure for when the feature is implemented
-  const teamMembers: TeamMember[] = [];
-
-  const handleInviteMember = () => {
-    if (!inviteEmail) {
+  const handleInviteMember = async () => {
+    if (!inviteEmail.trim()) {
       Alert.alert('Error', 'Please enter an email address');
       return;
     }
 
-    // TODO: Implement team invitation API
-    Alert.alert(
-      'Coming Soon',
-      'Team management functionality will be available in a future update. This will allow you to invite team members, assign roles, and manage permissions.'
-    );
+    if (!provider?.id || !user?.id) {
+      Alert.alert('Error', 'Provider information not available');
+      return;
+    }
 
-    setInviteEmail('');
-    setShowInviteForm(false);
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(inviteEmail)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    try {
+      await inviteTeamMemberMutation.mutateAsync({
+        providerId: provider.id,
+        email: inviteEmail,
+        firstName: inviteFirstName.trim() || undefined,
+        lastName: inviteLastName.trim() || undefined,
+        role: inviteRole,
+        invitedBy: user.id,
+      });
+
+      Alert.alert(
+        'Success',
+        'Team member invited! They will receive an email with instructions to join your team.'
+      );
+
+      setInviteEmail('');
+      setInviteFirstName('');
+      setInviteLastName('');
+      setInviteRole('team_member');
+      setShowInviteForm(false);
+      refetch();
+    } catch (error) {
+      Alert.alert('Error', (error as Error).message || 'Failed to invite team member');
+    }
   };
 
-  const handleRemoveMember = (memberId: string) => {
+  const handleRemoveMember = (memberId: string, memberName: string) => {
     Alert.alert(
       'Remove Team Member',
-      'Are you sure you want to remove this team member?',
+      `Are you sure you want to remove ${memberName} from your team?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove',
           style: 'destructive',
-          onPress: () => {
-            // TODO: Implement remove team member API
-            Alert.alert('Success', 'Team member removed');
+          onPress: async () => {
+            try {
+              await deleteTeamMemberMutation.mutateAsync(memberId);
+              Alert.alert('Success', 'Team member removed');
+              refetch();
+            } catch (error) {
+              Alert.alert('Error', (error as Error).message || 'Failed to remove team member');
+            }
           },
         },
       ]
     );
   };
 
+  const handleChangeRole = (memberId: string, memberName: string, currentRole: string) => {
+    const newRole = currentRole === 'team_member' ? 'manager' : 'team_member';
+    const roleLabel = newRole === 'manager' ? 'Manager' : 'Team Member';
+
+    Alert.alert(
+      'Change Role',
+      `Change ${memberName}'s role to ${roleLabel}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Change',
+          onPress: async () => {
+            try {
+              await updateTeamMemberMutation.mutateAsync({
+                id: memberId,
+                input: { role: newRole },
+              });
+              Alert.alert('Success', `Role changed to ${roleLabel}`);
+              refetch();
+            } catch (error) {
+              Alert.alert('Error', (error as Error).message || 'Failed to change role');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleToggleStatus = (memberId: string, memberName: string, currentStatus: string) => {
+    if (currentStatus === 'invited') {
+      Alert.alert('Error', 'Cannot change status of pending invitations');
+      return;
+    }
+
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    const statusLabel = newStatus === 'active' ? 'active' : 'inactive';
+
+    Alert.alert(
+      'Change Status',
+      `Set ${memberName} as ${statusLabel}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Change',
+          onPress: async () => {
+            try {
+              await updateTeamMemberMutation.mutateAsync({
+                id: memberId,
+                input: { status: newStatus },
+              });
+              Alert.alert('Success', `Status changed to ${statusLabel}`);
+              refetch();
+            } catch (error) {
+              Alert.alert('Error', (error as Error).message || 'Failed to change status');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleResendInvitation = (memberId: string, email: string) => {
+    Alert.alert(
+      'Resend Invitation',
+      `Send invitation email again to ${email}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Resend',
+          onPress: async () => {
+            try {
+              await resendInvitationMutation.mutateAsync(memberId);
+              Alert.alert('Success', 'Invitation email sent');
+            } catch (error) {
+              Alert.alert('Error', (error as Error).message || 'Failed to resend invitation');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const getMemberDisplayName = (member: typeof teamMembers[0]) => {
+    if (member.firstName && member.lastName) {
+      return `${member.firstName} ${member.lastName}`;
+    }
+    if (member.firstName) return member.firstName;
+    if (member.lastName) return member.lastName;
+    return member.email;
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return '#10B981';
+      case 'invited': return '#F59E0B';
+      case 'inactive': return '#9CA3AF';
+      default: return '#666';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  const getRoleLabel = (role: string) => {
+    return role === 'team_member' ? 'Team Member' : 'Manager';
+  };
+
+  if (providerLoading || teamLoading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#3B82F6" />
+        <Text style={styles.loadingText}>Loading team...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/(tabs)/provider-dashboard')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Team</Text>
@@ -82,204 +233,270 @@ export default function ProviderTeamScreen() {
         </TouchableOpacity>
       </View>
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+      <ScrollView style={styles.scrollContent}>
+        {/* Invite Form */}
+        {showInviteForm && (
+          <View style={styles.inviteForm}>
+            <Text style={styles.inviteTitle}>Invite Team Member</Text>
+
+            <TextInput
+              label="Email Address *"
+              value={inviteEmail}
+              onChangeText={setInviteEmail}
+              mode="outlined"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={styles.input}
+              outlineColor="#E5E7EB"
+              activeOutlineColor="#3B82F6"
+            />
+
+            <TextInput
+              label="First Name (Optional)"
+              value={inviteFirstName}
+              onChangeText={setInviteFirstName}
+              mode="outlined"
+              style={styles.input}
+              outlineColor="#E5E7EB"
+              activeOutlineColor="#3B82F6"
+            />
+
+            <TextInput
+              label="Last Name (Optional)"
+              value={inviteLastName}
+              onChangeText={setInviteLastName}
+              mode="outlined"
+              style={styles.input}
+              outlineColor="#E5E7EB"
+              activeOutlineColor="#3B82F6"
+            />
+
+            <View style={styles.roleSelector}>
+              <Text style={styles.roleLabel}>Role</Text>
+              <View style={styles.roleOptions}>
+                <TouchableOpacity
+                  style={[
+                    styles.roleOption,
+                    inviteRole === 'team_member' && styles.roleOptionActive,
+                  ]}
+                  onPress={() => setInviteRole('team_member')}
+                >
+                  <Text
+                    style={[
+                      styles.roleOptionText,
+                      inviteRole === 'team_member' && styles.roleOptionTextActive,
+                    ]}
+                  >
+                    Team Member
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.roleOption,
+                    inviteRole === 'manager' && styles.roleOptionActive,
+                  ]}
+                  onPress={() => setInviteRole('manager')}
+                >
+                  <Text
+                    style={[
+                      styles.roleOptionText,
+                      inviteRole === 'manager' && styles.roleOptionTextActive,
+                    ]}
+                  >
+                    Manager
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <Button
+              mode="contained"
+              buttonColor="#3B82F6"
+              onPress={handleInviteMember}
+              style={styles.inviteButton}
+              loading={inviteTeamMemberMutation.isPending}
+              disabled={inviteTeamMemberMutation.isPending}
+            >
+              Send Invitation
+            </Button>
+          </View>
+        )}
+
+        {/* Team Info Card */}
+        <View style={styles.infoCard}>
+          <MaterialCommunityIcons name="account-group" size={48} color="#3B82F6" />
+          <Text style={styles.infoTitle}>Team Management</Text>
+          <Text style={styles.infoText}>
+            Build your team by inviting members to help manage bookings, communicate with
+            customers, and grow your business.
+          </Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{teamMembers.length}</Text>
+              <Text style={styles.statLabel}>Total</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                {teamMembers.filter(m => m.status === 'active').length}
+              </Text>
+              <Text style={styles.statLabel}>Active</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                {teamMembers.filter(m => m.status === 'invited').length}
+              </Text>
+              <Text style={styles.statLabel}>Pending</Text>
+            </View>
+          </View>
         </View>
-      ) : (
-        <ScrollView style={styles.scrollContent}>
-          {/* Invite Form */}
-          {showInviteForm && (
-            <View style={styles.inviteForm}>
-              <Text style={styles.inviteTitle}>Invite Team Member</Text>
 
-              <TextInput
-                label="Email Address"
-                value={inviteEmail}
-                onChangeText={setInviteEmail}
-                mode="outlined"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                style={styles.input}
-                outlineColor="#E5E7EB"
-                activeOutlineColor="#3B82F6"
-              />
-
-              <View style={styles.roleSelector}>
-                <Text style={styles.roleLabel}>Role</Text>
-                <View style={styles.roleOptions}>
-                  <TouchableOpacity
-                    style={[
-                      styles.roleOption,
-                      inviteRole === 'team_member' && styles.roleOptionActive,
-                    ]}
-                    onPress={() => setInviteRole('team_member')}
-                  >
-                    <Text
-                      style={[
-                        styles.roleOptionText,
-                        inviteRole === 'team_member' && styles.roleOptionTextActive,
-                      ]}
-                    >
-                      Team Member
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.roleOption,
-                      inviteRole === 'manager' && styles.roleOptionActive,
-                    ]}
-                    onPress={() => setInviteRole('manager')}
-                  >
-                    <Text
-                      style={[
-                        styles.roleOptionText,
-                        inviteRole === 'manager' && styles.roleOptionTextActive,
-                      ]}
-                    >
-                      Manager
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <Button
-                mode="contained"
-                buttonColor="#3B82F6"
-                onPress={handleInviteMember}
-                style={styles.inviteButton}
-              >
-                Send Invitation
-              </Button>
+        {/* Owner Card */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Owner</Text>
+          <View style={styles.memberCard}>
+            <View style={styles.memberAvatar}>
+              <MaterialCommunityIcons name="account" size={32} color="#3B82F6" />
             </View>
-          )}
 
-          {/* Team Info Card */}
-          <View style={styles.infoCard}>
-            <MaterialCommunityIcons name="account-group" size={48} color="#3B82F6" />
-            <Text style={styles.infoTitle}>Team Management</Text>
-            <Text style={styles.infoText}>
-              Build your team by inviting members to help manage bookings, communicate with
-              customers, and grow your business.
-            </Text>
-          </View>
-
-          {/* Owner Card */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Owner</Text>
-            <View style={styles.memberCard}>
-              <View style={styles.memberAvatar}>
-                <MaterialCommunityIcons name="account" size={32} color="#3B82F6" />
+            <View style={styles.memberInfo}>
+              <Text style={styles.memberName}>
+                {user?.firstName} {user?.lastName}
+              </Text>
+              <Text style={styles.memberEmail}>{user?.email}</Text>
+              <View style={styles.memberBadge}>
+                <Text style={styles.memberBadgeText}>Owner</Text>
               </View>
-
-              <View style={styles.memberInfo}>
-                <Text style={styles.memberName}>
-                  {user?.firstName} {user?.lastName}
-                </Text>
-                <Text style={styles.memberEmail}>{user?.email}</Text>
-                <View style={styles.memberBadge}>
-                  <Text style={styles.memberBadgeText}>Owner</Text>
-                </View>
-              </View>
-
-              <MaterialCommunityIcons name="crown" size={24} color="#F59E0B" />
             </View>
+
+            <MaterialCommunityIcons name="crown" size={24} color="#F59E0B" />
           </View>
+        </View>
 
-          {/* Team Members */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Team Members ({teamMembers.length})</Text>
+        {/* Team Members */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Team Members ({teamMembers.length})</Text>
 
-            {teamMembers.length > 0 ? (
-              teamMembers.map((member) => (
-                <View key={member.id} style={styles.memberCard}>
-                  <View style={styles.memberAvatar}>
-                    <MaterialCommunityIcons name="account" size={32} color="#3B82F6" />
-                  </View>
+          {teamMembers.length > 0 ? (
+            teamMembers.map((member) => (
+              <View key={member.id} style={styles.memberCard}>
+                <View style={styles.memberAvatar}>
+                  <MaterialCommunityIcons name="account" size={32} color="#3B82F6" />
+                </View>
 
-                  <View style={styles.memberInfo}>
-                    <Text style={styles.memberName}>{member.name}</Text>
-                    <Text style={styles.memberEmail}>{member.email}</Text>
+                <View style={styles.memberInfo}>
+                  <Text style={styles.memberName}>{getMemberDisplayName(member)}</Text>
+                  <Text style={styles.memberEmail}>{member.email}</Text>
+                  <View style={styles.memberMeta}>
                     <View
                       style={[
                         styles.memberBadge,
-                        member.status === 'invited' && styles.memberBadgeInvited,
-                        member.status === 'inactive' && styles.memberBadgeInactive,
+                        { backgroundColor: `${getStatusColor(member.status)}20` },
                       ]}
                     >
                       <Text
                         style={[
                           styles.memberBadgeText,
-                          member.status === 'invited' && styles.memberBadgeTextInvited,
-                          member.status === 'inactive' && styles.memberBadgeTextInactive,
+                          { color: getStatusColor(member.status) },
                         ]}
                       >
-                        {member.status === 'invited' ? 'Invited' : member.role}
+                        {getStatusLabel(member.status)}
                       </Text>
                     </View>
+                    <View style={styles.roleBadge}>
+                      <Text style={styles.roleBadgeText}>{getRoleLabel(member.role)}</Text>
+                    </View>
                   </View>
-
-                  <TouchableOpacity onPress={() => handleRemoveMember(member.id)}>
-                    <MaterialCommunityIcons name="dots-vertical" size={24} color="#666" />
-                  </TouchableOpacity>
                 </View>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="account-group-outline" size={64} color="#CCC" />
-                <Text style={styles.emptyText}>No team members yet</Text>
-                <Text style={styles.emptySubtext}>
-                  Invite team members to help manage your business
-                </Text>
-                <Button
-                  mode="contained"
-                  buttonColor="#3B82F6"
-                  onPress={() => setShowInviteForm(true)}
-                  style={styles.emptyButton}
+
+                <TouchableOpacity
+                  onPress={() => {
+                    Alert.alert(
+                      'Team Member Actions',
+                      `Choose an action for ${getMemberDisplayName(member)}`,
+                      [
+                        {
+                          text: 'Change Role',
+                          onPress: () => handleChangeRole(member.id, getMemberDisplayName(member), member.role),
+                        },
+                        member.status !== 'invited' && {
+                          text: member.status === 'active' ? 'Deactivate' : 'Activate',
+                          onPress: () => handleToggleStatus(member.id, getMemberDisplayName(member), member.status),
+                        },
+                        member.status === 'invited' && {
+                          text: 'Resend Invitation',
+                          onPress: () => handleResendInvitation(member.id, member.email),
+                        },
+                        {
+                          text: 'Remove',
+                          onPress: () => handleRemoveMember(member.id, getMemberDisplayName(member)),
+                          style: 'destructive',
+                        },
+                        { text: 'Cancel', style: 'cancel' },
+                      ].filter(Boolean) as any
+                    );
+                  }}
                 >
-                  Invite Team Member
-                </Button>
+                  <MaterialCommunityIcons name="dots-vertical" size={24} color="#666" />
+                </TouchableOpacity>
               </View>
-            )}
-          </View>
-
-          {/* Permissions Info */}
-          <View style={styles.permissionsCard}>
-            <Text style={styles.permissionsTitle}>Role Permissions</Text>
-
-            <View style={styles.permissionItem}>
-              <MaterialCommunityIcons name="shield-account" size={20} color="#3B82F6" />
-              <View style={styles.permissionText}>
-                <Text style={styles.permissionRole}>Team Member</Text>
-                <Text style={styles.permissionDescription}>
-                  View bookings, update status, communicate with customers
-                </Text>
-              </View>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="account-group-outline" size={64} color="#CCC" />
+              <Text style={styles.emptyText}>No team members yet</Text>
+              <Text style={styles.emptySubtext}>
+                Invite team members to help manage your business
+              </Text>
+              <Button
+                mode="contained"
+                buttonColor="#3B82F6"
+                onPress={() => setShowInviteForm(true)}
+                style={styles.emptyButton}
+              >
+                Invite Team Member
+              </Button>
             </View>
+          )}
+        </View>
 
-            <View style={styles.permissionItem}>
-              <MaterialCommunityIcons name="shield-star" size={20} color="#8B5CF6" />
-              <View style={styles.permissionText}>
-                <Text style={styles.permissionRole}>Manager</Text>
-                <Text style={styles.permissionDescription}>
-                  All team member permissions plus manage services, pricing, and team
-                </Text>
-              </View>
-            </View>
+        {/* Permissions Info */}
+        <View style={styles.permissionsCard}>
+          <Text style={styles.permissionsTitle}>Role Permissions</Text>
 
-            <View style={styles.permissionItem}>
-              <MaterialCommunityIcons name="shield-crown" size={20} color="#F59E0B" />
-              <View style={styles.permissionText}>
-                <Text style={styles.permissionRole}>Owner</Text>
-                <Text style={styles.permissionDescription}>
-                  Full access to all features and settings
-                </Text>
-              </View>
+          <View style={styles.permissionItem}>
+            <MaterialCommunityIcons name="shield-account" size={20} color="#3B82F6" />
+            <View style={styles.permissionText}>
+              <Text style={styles.permissionRole}>Team Member</Text>
+              <Text style={styles.permissionDescription}>
+                View bookings, update status, communicate with customers
+              </Text>
             </View>
           </View>
-        </ScrollView>
-      )}
+
+          <View style={styles.permissionItem}>
+            <MaterialCommunityIcons name="shield-star" size={20} color="#8B5CF6" />
+            <View style={styles.permissionText}>
+              <Text style={styles.permissionRole}>Manager</Text>
+              <Text style={styles.permissionDescription}>
+                All team member permissions plus manage services, pricing, and team
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.permissionItem}>
+            <MaterialCommunityIcons name="shield-crown" size={20} color="#F59E0B" />
+            <View style={styles.permissionText}>
+              <Text style={styles.permissionRole}>Owner</Text>
+              <Text style={styles.permissionDescription}>
+                Full access to all features and settings
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
     </View>
   );
 }
@@ -288,6 +505,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#666',
+    fontFamily: 'NunitoSans_400Regular',
   },
   header: {
     flexDirection: 'row',
@@ -311,11 +537,6 @@ const styles = StyleSheet.create({
   },
   addButton: {
     padding: 4,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   scrollContent: {
     flex: 1,
@@ -400,6 +621,26 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontFamily: 'NunitoSans_400Regular',
   },
+  statsRow: {
+    flexDirection: 'row',
+    marginTop: 20,
+    gap: 24,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#3B82F6',
+    fontFamily: 'NunitoSans_700Bold',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    fontFamily: 'NunitoSans_400Regular',
+  },
   section: {
     paddingHorizontal: 20,
     marginBottom: 24,
@@ -445,6 +686,10 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     fontFamily: 'NunitoSans_400Regular',
   },
+  memberMeta: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   memberBadge: {
     alignSelf: 'flex-start',
     backgroundColor: '#E0F2FE',
@@ -452,23 +697,24 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
-  memberBadgeInvited: {
-    backgroundColor: '#FEF3C7',
-  },
-  memberBadgeInactive: {
-    backgroundColor: '#F3F4F6',
-  },
   memberBadgeText: {
     fontSize: 11,
     color: '#3B82F6',
     fontWeight: 'bold',
     fontFamily: 'NunitoSans_700Bold',
   },
-  memberBadgeTextInvited: {
-    color: '#F59E0B',
+  roleBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  memberBadgeTextInactive: {
-    color: '#9CA3AF',
+  roleBadgeText: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: 'bold',
+    fontFamily: 'NunitoSans_700Bold',
   },
   emptyState: {
     alignItems: 'center',

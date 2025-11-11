@@ -1,38 +1,64 @@
-import { View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Platform } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useProviders } from '@/hooks/useProviders';
 import { useBookingStore } from '@/stores/bookingStore';
 import * as Location from 'expo-location';
+import MapView, { Marker, PROVIDER_GOOGLE, Circle } from 'react-native-maps';
+
+const STEPS = ['Service', 'Vehicle', 'Location', 'Provider', 'Time', 'Confirm'];
+const CURRENT_STEP = 3; // Provider selection is step 4 (index 3)
 
 export default function ProviderSelectionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const mapRef = useRef<MapView>(null);
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('best-match');
-  const { setSelectedProvider } = useBookingStore();
+  const { setSelectedProvider, selectedLocation, selectedService } = useBookingStore();
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
-  const { data: providers = [], isLoading } = useProviders();
+  const { data: allProviders = [], isLoading } = useProviders();
 
-  // Get user's current location
+  // Filter providers by location and service
+  const providers = allProviders.filter((provider) => {
+    // Filter by selected service if available
+    if (selectedService) {
+      // Check if provider offers this service type
+      // This assumes provider has servicesOffered or similar field
+    }
+    return provider.isActive; // Only show active providers
+  });
+
+  // Use selected location or get current location
   useEffect(() => {
-    (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        return;
-      }
+    if (selectedLocation?.coordinates) {
+      setUserLocation(selectedLocation.coordinates);
+      // Animate map to selected location
+      mapRef.current?.animateToRegion({
+        latitude: selectedLocation.coordinates.latitude,
+        longitude: selectedLocation.coordinates.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      }, 1000);
+    } else {
+      (async () => {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          return;
+        }
 
-      let location = await Location.getCurrentPositionAsync({});
-      setUserLocation({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
-    })();
-  }, []);
+        let location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      })();
+    }
+  }, [selectedLocation]);
 
   const handleSelectProvider = (provider: any) => {
     setSelectedProvider(provider);
@@ -75,32 +101,121 @@ export default function ProviderSelectionScreen() {
       </View>
 
       <View style={styles.innerContainer}>
-        {/* Map Container - Static Map Placeholder */}
-        <View style={styles.mapContainer}>
-        <View style={styles.mapPlaceholder}>
-          <MaterialCommunityIcons name="map" size={80} color="#3B82F6" />
-          <Text style={styles.mapText}>Provider Locations</Text>
-          <Text style={styles.mapSubtext}>{providers.length} providers in your area</Text>
-          {userLocation && (
-            <Text style={styles.locationText}>
-              Lat: {userLocation.latitude.toFixed(4)}, Lng: {userLocation.longitude.toFixed(4)}
-            </Text>
-          )}
-        </View>
-
-        {/* Provider indicators */}
-        <View style={styles.providersOverlay}>
-          {providers.slice(0, 5).map((provider, index) => (
-            <View
-              key={provider.id}
-              style={[
-                styles.providerIndicator,
-                { left: 30 + (index * 60) % 250, top: 60 + (index * 40) % 150 }
-              ]}
-            >
-              <MaterialCommunityIcons name="store" size={16} color="#FFF" />
+        {/* Progress Bar */}
+        <View style={styles.progressContainer}>
+          {STEPS.map((step, index) => (
+            <View key={step} style={styles.stepContainer}>
+              <View style={styles.stepWrapper}>
+                <View
+                  style={[
+                    styles.stepCircle,
+                    index <= CURRENT_STEP && styles.stepCircleActive,
+                    index < CURRENT_STEP && styles.stepCircleCompleted,
+                  ]}
+                >
+                  {index < CURRENT_STEP ? (
+                    <MaterialCommunityIcons name="check" size={16} color="#FFF" />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.stepNumber,
+                        index <= CURRENT_STEP && styles.stepNumberActive,
+                      ]}
+                    >
+                      {index + 1}
+                    </Text>
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.stepLabel,
+                    index <= CURRENT_STEP && styles.stepLabelActive,
+                  ]}
+                >
+                  {step}
+                </Text>
+              </View>
+              {index < STEPS.length - 1 && (
+                <View
+                  style={[
+                    styles.stepLine,
+                    index < CURRENT_STEP && styles.stepLineActive,
+                  ]}
+                />
+              )}
             </View>
           ))}
+        </View>
+
+        {/* Map Container - Live Map */}
+        <View style={styles.mapContainer}>
+          {userLocation ? (
+            <MapView
+              ref={mapRef}
+              style={styles.map}
+              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+              initialRegion={{
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
+                latitudeDelta: 0.05,
+                longitudeDelta: 0.05,
+              }}
+              showsUserLocation={true}
+              showsMyLocationButton={false}
+            >
+              {/* User's selected location marker */}
+              {selectedLocation?.coordinates && (
+                <Marker
+                  coordinate={selectedLocation.coordinates}
+                  title="Service Location"
+                  description={selectedLocation.address}
+                >
+                  <View style={styles.markerContainer}>
+                    <MaterialCommunityIcons name="map-marker" size={32} color="#3B82F6" />
+                  </View>
+                </Marker>
+              )}
+
+              {/* Service area circle around selected location */}
+              {selectedLocation?.coordinates && (
+                <Circle
+                  center={selectedLocation.coordinates}
+                  radius={5000} // 5km radius
+                  fillColor="rgba(59, 130, 246, 0.1)"
+                  strokeColor="rgba(59, 130, 246, 0.3)"
+                  strokeWidth={2}
+                />
+              )}
+
+              {/* Provider markers */}
+              {providers.map((provider) => {
+                // Use provider's location if available, otherwise mock nearby location
+                const providerLocation = provider.location || {
+                  latitude: userLocation.latitude + (Math.random() - 0.5) * 0.05,
+                  longitude: userLocation.longitude + (Math.random() - 0.5) * 0.05,
+                };
+
+                return (
+                  <Marker
+                    key={provider.id}
+                    coordinate={providerLocation}
+                    title={provider.businessName}
+                    description={provider.serviceArea || 'Service Provider'}
+                    onPress={() => handleSelectProvider(provider)}
+                  >
+                    <View style={styles.providerIndicator}>
+                      <MaterialCommunityIcons name="store" size={20} color="#FFF" />
+                    </View>
+                  </Marker>
+                );
+              })}
+            </MapView>
+          ) : (
+            <View style={styles.mapPlaceholder}>
+              <ActivityIndicator size="large" color="#3B82F6" />
+              <Text style={styles.mapText}>Loading map...</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.mapOverlay}>
@@ -125,10 +240,10 @@ export default function ProviderSelectionScreen() {
         >
           <MaterialCommunityIcons name="crosshairs-gps" size={24} color="#3B82F6" />
         </TouchableOpacity>
-        </View>
+      </View>
 
-        {/* Filter Bar */}
-        <View style={styles.filterContainer}>
+      {/* Filter Bar */}
+      <View style={styles.filterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {filters.map((filter) => (
             <TouchableOpacity
@@ -155,10 +270,10 @@ export default function ProviderSelectionScreen() {
         <TouchableOpacity style={styles.sortButton}>
           <MaterialCommunityIcons name="sort" size={20} color="#666" />
         </TouchableOpacity>
-        </View>
+      </View>
 
-        {/* Provider List */}
-        <ScrollView style={styles.providerList} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
+      {/* Provider List */}
+      <ScrollView style={styles.providerList} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
         <View style={styles.listHeader}>
           <Text style={styles.listTitle}>{providers.length} Providers Found</Text>
           <TouchableOpacity>
@@ -174,7 +289,7 @@ export default function ProviderSelectionScreen() {
             <TouchableOpacity
               key={provider.id}
               style={styles.providerCard}
-              onPress={() => handleSelectProvider(provider)}
+              onPress={() => router.push(`/provider/${provider.id}/profile`)}
             >
               {/* Provider Photo */}
               <View style={styles.providerPhotoContainer}>
@@ -247,9 +362,10 @@ export default function ProviderSelectionScreen() {
             </TouchableOpacity>
           );
         })}
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+
+      </ScrollView>
+    
+    </SafeAreaView >
   );
 }
 
@@ -300,6 +416,64 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 32,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 8,
+    paddingVertical: 16,
+    backgroundColor: '#F8F9FA',
+  },
+  stepContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stepWrapper: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  stepCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  stepCircleActive: {
+    backgroundColor: '#3B82F6',
+  },
+  stepCircleCompleted: {
+    backgroundColor: '#10B981',
+  },
+  stepNumber: {
+    fontSize: 11,
+    color: '#999',
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  stepNumberActive: {
+    color: '#FFF',
+  },
+  stepLabel: {
+    fontSize: 8,
+    color: '#999',
+    fontFamily: 'NunitoSans_400Regular',
+  },
+  stepLabelActive: {
+    color: '#333',
+    fontFamily: 'NunitoSans_600SemiBold',
+  },
+  stepLine: {
+    height: 2,
+    backgroundColor: '#E5E7EB',
+    position: 'absolute',
+    left: '50%',
+    right: '-50%',
+    top: 13,
+  },
+  stepLineActive: {
+    backgroundColor: '#10B981',
   },
   mapContainer: {
     height: 300,
